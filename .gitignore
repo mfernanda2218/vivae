@@ -1,0 +1,24 @@
+# IDEs and environments
+.vscode/
+.idea/
+.windsurf/
+.claude/
+.agents/
+.DS_Store
+
+# Databases
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# Node
+node_modules/
+dist/
+build/
+.next/
+
+# Environment variables
+.env
+.env.*
+!.env.example
