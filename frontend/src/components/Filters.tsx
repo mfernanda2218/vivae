@@ -1,0 +1,106 @@
+"use client";
+
+import { FormEvent, useState } from "react";
+import { SlidersHorizontal } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Categories } from "./Categories";
+
+export function Filters() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [city, setCity] = useState(searchParams.get("city") || "");
+  const [dateFrom, setDateFrom] = useState(searchParams.get("dateFrom") || "");
+  const [dateTo, setDateTo] = useState(searchParams.get("dateTo") || "");
+  const [minPrice, setMinPrice] = useState(searchParams.get("minPrice") || "");
+  const [maxPrice, setMaxPrice] = useState(searchParams.get("maxPrice") || "");
+
+  function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const params = new URLSearchParams(searchParams.toString());
+
+    [
+      ["city", city],
+      ["dateFrom", dateFrom],
+      ["dateTo", dateTo],
+      ["minPrice", minPrice],
+      ["maxPrice", maxPrice],
+    ].forEach(([key, value]) => {
+      if (value) params.set(key, value);
+      else params.delete(key);
+    });
+
+    router.push(`/eventos?${params.toString()}`);
+  }
+
+  return (
+    <aside className="rounded-lg border border-surface-2 bg-surface p-4 lg:sticky lg:top-24 lg:h-fit">
+      <div className="mb-5 flex items-center gap-2 text-sm font-bold text-text">
+        <SlidersHorizontal className="h-4 w-4 text-accent" />
+        Filtros
+      </div>
+      <form onSubmit={onSubmit} className="flex flex-col gap-5">
+        <div className="flex flex-col gap-3">
+          <span className="text-xs font-bold uppercase text-muted-foreground">Categoria</span>
+          <Categories activeCategory={searchParams.get("category") || undefined} />
+        </div>
+        <label className="flex flex-col gap-2 text-sm font-semibold text-text">
+          Cidade
+          <input
+            value={city}
+            onChange={(event) => setCity(event.target.value)}
+            className="h-10 rounded-md border border-surface-2 bg-background px-3 text-sm outline-none focus:border-accent"
+            placeholder="São Paulo"
+          />
+        </label>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1">
+          <label className="flex flex-col gap-2 text-sm font-semibold text-text">
+            De
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(event) => setDateFrom(event.target.value)}
+              className="h-10 rounded-md border border-surface-2 bg-background px-3 text-sm outline-none focus:border-accent"
+            />
+          </label>
+          <label className="flex flex-col gap-2 text-sm font-semibold text-text">
+            Até
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(event) => setDateTo(event.target.value)}
+              className="h-10 rounded-md border border-surface-2 bg-background px-3 text-sm outline-none focus:border-accent"
+            />
+          </label>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="flex flex-col gap-2 text-sm font-semibold text-text">
+            Mín.
+            <input
+              type="number"
+              min="0"
+              value={minPrice}
+              onChange={(event) => setMinPrice(event.target.value)}
+              className="h-10 rounded-md border border-surface-2 bg-background px-3 text-sm outline-none focus:border-accent"
+            />
+          </label>
+          <label className="flex flex-col gap-2 text-sm font-semibold text-text">
+            Máx.
+            <input
+              type="number"
+              min="0"
+              value={maxPrice}
+              onChange={(event) => setMaxPrice(event.target.value)}
+              className="h-10 rounded-md border border-surface-2 bg-background px-3 text-sm outline-none focus:border-accent"
+            />
+          </label>
+        </div>
+        <button
+          type="submit"
+          className="h-10 rounded-md bg-accent px-4 text-sm font-bold text-background transition-colors hover:bg-accent/90"
+        >
+          Aplicar filtros
+        </button>
+      </form>
+    </aside>
+  );
+}
