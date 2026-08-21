@@ -109,3 +109,58 @@ export interface TicketWithQr {
     payment: Payment | null;
   };
 }
+
+export type GateResultCode =
+  | "VALID"
+  | "INVALID"
+  | "ALREADY_USED"
+  | "WRONG_EVENT"
+  | "EVENT_CANCELLED"
+  | "CANCELLED";
+
+export interface GateResult {
+  result: GateResultCode;
+  valid: boolean;
+  message: string;
+  ticket: {
+    id: string;
+    code: string;
+    status: string;
+    validatedAt?: string | null;
+    reservation: {
+      id: string;
+      status: ReservationStatus;
+    };
+    event: Pick<Event, "id" | "title" | "date" | "location" | "status">;
+    customer: {
+      id: string;
+      name: string;
+      email: string;
+    };
+  } | null;
+}
+
+export interface GateDashboard {
+  organizerId: string;
+  totals: {
+    events: number;
+    reservations: number;
+    tickets: number;
+    active: number;
+    used: number;
+    cancelled: number;
+    checkinsToday: number;
+    availableTickets: number;
+  };
+  events: Array<{
+    id: string;
+    title: string;
+    date: string;
+    status: EventStatus;
+    capacity: number;
+    availableTickets: number;
+    soldTickets: number;
+    usedTickets: number;
+    cancelledTickets: number;
+  }>;
+}

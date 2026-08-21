@@ -3,6 +3,8 @@ import type {
   Event,
   EventFilters,
   EventsResponse,
+  GateDashboard,
+  GateResult,
   Reservation,
   TicketWithQr,
 } from "@/types/event";
@@ -48,6 +50,39 @@ async function apiMutation<T>(path: string, body?: object): Promise<T> {
     const payload = await response.json().catch(() => null);
     const message = payload?.message || `API request failed with status ${response.status}`;
     throw new Error(Array.isArray(message) ? message.join(", ") : message);
+  }
+
+  return response.json() as Promise<T>;
+}
+
+async function apiPost<T>(path: string, body?: object): Promise<T> {
+  const response = await fetch(buildUrl(path), {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body || {}),
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null);
+    const message = payload?.message || `API request failed with status ${response.status}`;
+    throw new Error(Array.isArray(message) ? message.join(", ") : message);
+  }
+
+  return response.json() as Promise<T>;
+}
+
+async function apiFetchNoStore<T>(path: string, filters?: object): Promise<T> {
+  const response = await fetch(buildUrl(path, filters), {
+    headers: { Accept: "application/json" },
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error(`API request failed with status ${response.status}`);
   }
 
   return response.json() as Promise<T>;
@@ -129,6 +164,31 @@ export async function getPublicTicket(token: string): Promise<{
 } | null> {
   try {
     return await apiFetch(`/tickets/public/${token}`);
+  } catch {
+    return null;
+  }
+}
+
+export async function validateGateTicket(input: {
+  identifier: string;
+  eventId?: string;
+}): Promise<GateResult> {
+  return apiPost<GateResult>("/gate/validate", input);
+}
+
+export async function cancelGateTicket(input: {
+  identifier: string;
+  eventId?: string;
+}): Promise<GateResult> {
+  return apiPost<GateResult>("/gate/cancel", input);
+}
+
+export async function getGateDashboard(eventId?: string): Promise<GateDashboard | null> {
+  try {
+    return await apiFetchNoStore<GateDashboard>(
+      "/gate/dashboard",
+      eventId ? { eventId } : undefined,
+    );
   } catch {
     return null;
   }
