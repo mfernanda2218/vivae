@@ -9,13 +9,17 @@ export class GateController {
   constructor(private readonly gateService: GateService) {}
 
   @Post('validate')
-  @ApiOperation({ summary: 'Valida ingresso na portaria e previne segunda utilizacao' })
+  @ApiOperation({
+    summary: 'Valida ingresso na portaria e previne segunda utilizacao',
+  })
   validate(@Body() dto: GateActionDto, @Headers('x-user-id') userId?: string) {
     return this.gateService.validate(dto, userId);
   }
 
   @Post('cancel')
-  @ApiOperation({ summary: 'Cancela ingresso ativo e devolve uma unidade ao estoque' })
+  @ApiOperation({
+    summary: 'Cancela ingresso ativo e devolve uma unidade ao estoque',
+  })
   cancel(@Body() dto: GateActionDto, @Headers('x-user-id') userId?: string) {
     return this.gateService.cancel(dto, userId);
   }

@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { createHash } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
@@ -25,6 +30,8 @@ const TICKET_STATUS = {
 
 @Injectable()
 export class GateService {
+  private readonly logger = new Logger(GateService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   async validate(dto: GateActionDto, userId?: string) {
@@ -64,6 +71,12 @@ export class GateService {
       where: { id: ticket.id },
       include: this.ticketInclude(),
     });
+    this.logger.log({
+      action: 'gate.validate',
+      ticketId: ticket.id,
+      eventId: validated.reservation.eventId,
+      userId: userId || 'gate',
+    });
 
     return {
       result: 'VALID',
@@ -81,7 +94,11 @@ export class GateService {
     }
 
     if (dto.eventId && ticket.reservation.eventId !== dto.eventId) {
-      return this.invalid('WRONG_EVENT', 'Ingresso pertence a outro evento', ticket);
+      return this.invalid(
+        'WRONG_EVENT',
+        'Ingresso pertence a outro evento',
+        ticket,
+      );
     }
 
     if (ticket.status === TICKET_STATUS.CANCELLED) {
@@ -89,7 +106,11 @@ export class GateService {
     }
 
     if (ticket.status === TICKET_STATUS.USED) {
-      return this.invalid('ALREADY_USED', 'Ingresso ja utilizado nao pode ser cancelado', ticket);
+      return this.invalid(
+        'ALREADY_USED',
+        'Ingresso ja utilizado nao pode ser cancelado',
+        ticket,
+      );
     }
 
     if (ticket.status !== TICKET_STATUS.ACTIVE) {
@@ -117,6 +138,12 @@ export class GateService {
         include: this.ticketInclude(),
       });
     });
+    this.logger.warn({
+      action: 'gate.cancel',
+      ticketId: ticket.id,
+      eventId: cancelled.reservation.eventId,
+      userId: userId || 'gate',
+    });
 
     return {
       result: 'CANCELLED',
@@ -138,38 +165,39 @@ export class GateService {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const [events, ticketGroups, checkinsToday, reservations] = await Promise.all([
-      this.prisma.event.findMany({
-        where: eventWhere,
-        orderBy: { date: 'asc' },
-        include: {
-          reservations: {
-            include: {
-              tickets: { select: { status: true } },
-              payment: { select: { status: true, amount: true } },
+    const [events, ticketGroups, checkinsToday, reservations] =
+      await Promise.all([
+        this.prisma.event.findMany({
+          where: eventWhere,
+          orderBy: { date: 'asc' },
+          include: {
+            reservations: {
+              include: {
+                tickets: { select: { status: true } },
+                payment: { select: { status: true, amount: true } },
+              },
             },
           },
-        },
-      }),
-      this.prisma.ticket.groupBy({
-        by: ['status'],
-        where: ticketWhere,
-        _count: { _all: true },
-      }),
-      this.prisma.ticket.count({
-        where: {
-          ...ticketWhere,
-          status: TICKET_STATUS.USED,
-          validatedAt: { gte: today },
-        },
-      }),
-      this.prisma.reservation.count({
-        where: {
-          event: eventWhere,
-          status: RESERVATION_STATUS.CONFIRMED,
-        },
-      }),
-    ]);
+        }),
+        this.prisma.ticket.groupBy({
+          by: ['status'],
+          where: ticketWhere,
+          _count: { _all: true },
+        }),
+        this.prisma.ticket.count({
+          where: {
+            ...ticketWhere,
+            status: TICKET_STATUS.USED,
+            validatedAt: { gte: today },
+          },
+        }),
+        this.prisma.reservation.count({
+          where: {
+            event: eventWhere,
+            status: RESERVATION_STATUS.CONFIRMED,
+          },
+        }),
+      ]);
 
     const ticketsByStatus = ticketGroups.reduce<Record<string, number>>(
       (acc, item) => ({ ...acc, [item.status]: item._count._all }),
@@ -181,18 +209,27 @@ export class GateService {
       totals: {
         events: events.length,
         reservations,
-        tickets: Object.values(ticketsByStatus).reduce((sum, count) => sum + count, 0),
+        tickets: Object.values(ticketsByStatus).reduce(
+          (sum, count) => sum + count,
+          0,
+        ),
         active: ticketsByStatus.ACTIVE || 0,
         used: ticketsByStatus.USED || 0,
         cancelled: ticketsByStatus.CANCELLED || 0,
         checkinsToday,
-        availableTickets: events.reduce((sum, event) => sum + event.availableTickets, 0),
+        availableTickets: events.reduce(
+          (sum, event) => sum + event.availableTickets,
+          0,
+        ),
       },
       events: events.map((event) => {
         const statuses = event.reservations
           .flatMap((reservation) => reservation.tickets)
           .reduce<Record<string, number>>(
-            (acc, ticket) => ({ ...acc, [ticket.status]: (acc[ticket.status] || 0) + 1 }),
+            (acc, ticket) => ({
+              ...acc,
+              [ticket.status]: (acc[ticket.status] || 0) + 1,
+            }),
             {},
           );
 
@@ -213,7 +250,11 @@ export class GateService {
 
   private checkTicketStatus(ticket: GateTicket, expectedEventId?: string) {
     if (expectedEventId && ticket.reservation.eventId !== expectedEventId) {
-      return this.invalid('WRONG_EVENT', 'Ingresso pertence a outro evento', ticket);
+      return this.invalid(
+        'WRONG_EVENT',
+        'Ingresso pertence a outro evento',
+        ticket,
+      );
     }
 
     if (ticket.reservation.event.status === EVENT_STATUS.CANCELLED) {
@@ -240,7 +281,11 @@ export class GateService {
       ticket.reservation.status !== RESERVATION_STATUS.CONFIRMED ||
       ticket.reservation.payment?.status !== 'APPROVED'
     ) {
-      return this.invalid('INVALID', 'Ingresso ainda nao esta confirmado', ticket);
+      return this.invalid(
+        'INVALID',
+        'Ingresso ainda nao esta confirmado',
+        ticket,
+      );
     }
 
     return null;
