@@ -140,21 +140,32 @@ export class ReservationsService {
         throw new BadRequestException('Reserva já está encerrada');
       }
 
+      const ticketsToReturn = reservation.tickets.filter(
+        (ticket) => ticket.status === 'ACTIVE',
+      ).length;
+
       await tx.ticket.updateMany({
-        where: { reservationId: id },
+        where: { reservationId: id, status: { not: 'USED' } },
         data: { status: 'CANCELLED' },
       });
 
-      await tx.event.update({
-        where: { id: reservation.eventId },
-        data: {
-          availableTickets: { increment: reservation.quantity },
-          status:
-            reservation.event.status === EVENT_STATUS.SOLD_OUT
-              ? EVENT_STATUS.PUBLISHED
-              : reservation.event.status,
-        },
-      });
+      if (ticketsToReturn > 0 || reservation.tickets.length === 0) {
+        await tx.event.update({
+          where: { id: reservation.eventId },
+          data: {
+            availableTickets: {
+              increment:
+                reservation.tickets.length === 0
+                  ? reservation.quantity
+                  : ticketsToReturn,
+            },
+            status:
+              reservation.event.status === EVENT_STATUS.SOLD_OUT
+                ? EVENT_STATUS.PUBLISHED
+                : reservation.event.status,
+          },
+        });
+      }
 
       return tx.reservation.update({
         where: { id },

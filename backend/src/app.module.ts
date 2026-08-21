@@ -9,6 +9,7 @@ import { PaymentsModule } from './payments/payments.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ReservationsModule } from './reservations/reservations.module';
 import { TicketsModule } from './tickets/tickets.module';
+import { GateModule } from './gate/gate.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { TicketsModule } from './tickets/tickets.module';
     ReservationsModule,
     PaymentsModule,
     TicketsModule,
+    GateModule,
   ],
   controllers: [AppController],
   providers: [AppService],
