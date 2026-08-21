@@ -1,27 +1,33 @@
+import { Type } from 'class-transformer';
 import {
+  IsDateString,
+  IsInt,
+  IsNumber,
   IsOptional,
   IsString,
-  IsNumberString,
-  IsDateString,
+  Max,
+  MaxLength,
+  Min,
 } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class EventsFilterDto {
-  @ApiPropertyOptional({
-    description: 'Texto livre de busca (título, descrição)',
-  })
+  @ApiPropertyOptional({ description: 'Texto livre de busca' })
   @IsOptional()
   @IsString()
+  @MaxLength(120)
   search?: string;
 
   @ApiPropertyOptional({ description: 'Categoria do evento' })
   @IsOptional()
   @IsString()
+  @MaxLength(80)
   category?: string;
 
   @ApiPropertyOptional({ description: 'Cidade / local do evento' })
   @IsOptional()
   @IsString()
+  @MaxLength(120)
   city?: string;
 
   @ApiPropertyOptional({ description: 'Data inicial (ISO 8601)' })
@@ -34,23 +40,32 @@ export class EventsFilterDto {
   @IsDateString()
   dateTo?: string;
 
-  @ApiPropertyOptional({ description: 'Preço mínimo' })
+  @ApiPropertyOptional({ description: 'Preco minimo' })
   @IsOptional()
-  @IsNumberString()
-  minPrice?: string;
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  minPrice?: number;
 
-  @ApiPropertyOptional({ description: 'Preço máximo' })
+  @ApiPropertyOptional({ description: 'Preco maximo' })
   @IsOptional()
-  @IsNumberString()
-  maxPrice?: string;
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  maxPrice?: number;
 
-  @ApiPropertyOptional({ description: 'Número da página (padrão: 1)' })
+  @ApiPropertyOptional({ description: 'Numero da pagina' })
   @IsOptional()
-  @IsNumberString()
-  page?: string;
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number;
 
-  @ApiPropertyOptional({ description: 'Itens por página (padrão: 12)' })
+  @ApiPropertyOptional({ description: 'Itens por pagina' })
   @IsOptional()
-  @IsNumberString()
-  limit?: string;
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(50)
+  limit?: number;
 }

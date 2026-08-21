@@ -1,4 +1,11 @@
-import { Body, Controller, Headers, Param, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Headers,
+  Param,
+  ParseUUIDPipe,
+  Post,
+} from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ProcessPaymentDto } from './dto/process-payment.dto';
 import { PaymentsService } from './payments.service';
@@ -11,7 +18,7 @@ export class PaymentsController {
   @Post(':reservationId')
   @ApiOperation({ summary: 'Processa pagamento simulado da reserva' })
   process(
-    @Param('reservationId') reservationId: string,
+    @Param('reservationId', ParseUUIDPipe) reservationId: string,
     @Body() dto: ProcessPaymentDto,
     @Headers('x-user-id') userId?: string,
   ) {

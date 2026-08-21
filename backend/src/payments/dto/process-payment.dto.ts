@@ -1,10 +1,11 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsIn, IsOptional, IsString } from 'class-validator';
+import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class ProcessPaymentDto {
   @ApiPropertyOptional({ description: 'Método de pagamento simulado' })
   @IsOptional()
   @IsString()
+  @MaxLength(40)
   method?: string;
 
   @ApiPropertyOptional({

@@ -6,6 +6,7 @@ import {
   Get,
   Headers,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   Query,
@@ -29,7 +30,7 @@ export class EventsController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Detalhes de um evento' })
-  findOne(@Param('id') id: string) {
+  findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.eventsService.findOne(id);
   }
 
@@ -45,7 +46,7 @@ export class EventsController {
   @Patch(':id')
   @ApiOperation({ summary: 'Edita evento do organizador' })
   update(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateEventDto,
     @Headers('x-organizer-id') organizerId?: string,
   ) {
@@ -55,7 +56,7 @@ export class EventsController {
   @Delete(':id')
   @ApiOperation({ summary: 'Exclui evento do organizador' })
   remove(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Headers('x-organizer-id') organizerId?: string,
   ) {
     return this.eventsService.remove(id, this.getOrganizerId(organizerId));
@@ -64,7 +65,7 @@ export class EventsController {
   @Post(':id/publish')
   @ApiOperation({ summary: 'Publica evento em DRAFT' })
   publish(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Headers('x-organizer-id') organizerId?: string,
   ) {
     return this.eventsService.publish(id, this.getOrganizerId(organizerId));
@@ -73,7 +74,7 @@ export class EventsController {
   @Post(':id/cancel')
   @ApiOperation({ summary: 'Cancela evento do organizador' })
   cancel(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Headers('x-organizer-id') organizerId?: string,
   ) {
     return this.eventsService.cancel(id, this.getOrganizerId(organizerId));

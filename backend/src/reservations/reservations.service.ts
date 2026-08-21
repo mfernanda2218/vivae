@@ -3,6 +3,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
@@ -24,6 +25,8 @@ const RESERVATION_STATUS = {
 
 @Injectable()
 export class ReservationsService {
+  private readonly logger = new Logger(ReservationsService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   async create(dto: CreateReservationDto, userId?: string) {
@@ -66,7 +69,7 @@ export class ReservationsService {
         });
       }
 
-      return tx.reservation.create({
+      const reservation = await tx.reservation.create({
         data: {
           userId: currentUserId,
           eventId: dto.eventId,
@@ -82,6 +85,15 @@ export class ReservationsService {
         },
         include: this.reservationInclude(),
       });
+      this.logger.log({
+        action: 'reservation.create',
+        reservationId: reservation.id,
+        eventId: dto.eventId,
+        quantity: dto.quantity,
+        userId: currentUserId,
+      });
+
+      return reservation;
     });
   }
 
@@ -149,6 +161,11 @@ export class ReservationsService {
         data: { status: 'CANCELLED' },
       });
 
+      await tx.payment.updateMany({
+        where: { reservationId: id, status: 'PENDING' },
+        data: { status: 'DECLINED' },
+      });
+
       if (ticketsToReturn > 0 || reservation.tickets.length === 0) {
         await tx.event.update({
           where: { id: reservation.eventId },
@@ -167,11 +184,18 @@ export class ReservationsService {
         });
       }
 
-      return tx.reservation.update({
+      const cancelled = await tx.reservation.update({
         where: { id },
         data: { status: RESERVATION_STATUS.CANCELLED },
         include: this.reservationInclude(),
       });
+      this.logger.warn({
+        action: 'reservation.cancel',
+        reservationId: id,
+        userId: currentUserId,
+      });
+
+      return cancelled;
     });
   }
 

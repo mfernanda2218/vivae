@@ -1,4 +1,4 @@
-import { Controller, Get, Headers, Param } from '@nestjs/common';
+import { Controller, Get, Headers, Param, ParseUUIDPipe } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { TicketsService } from './tickets.service';
 
@@ -21,13 +21,19 @@ export class TicketsController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Detalha ingresso do cliente com QR Code' })
-  findOne(@Param('id') id: string, @Headers('x-user-id') userId?: string) {
+  findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Headers('x-user-id') userId?: string,
+  ) {
     return this.ticketsService.findOne(id, userId);
   }
 
   @Get(':id/share')
   @ApiOperation({ summary: 'Retorna link compartilhável do ingresso' })
-  share(@Param('id') id: string, @Headers('x-user-id') userId?: string) {
+  share(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Headers('x-user-id') userId?: string,
+  ) {
     return this.ticketsService.share(id, userId);
   }
 }

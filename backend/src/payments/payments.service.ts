@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma, Ticket } from '@prisma/client';
@@ -29,6 +30,8 @@ const RESERVATION_STATUS = {
 
 @Injectable()
 export class PaymentsService {
+  private readonly logger = new Logger(PaymentsService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   async process(
@@ -74,11 +77,18 @@ export class PaymentsService {
           },
         });
 
-        return tx.reservation.update({
+        const expired = await tx.reservation.update({
           where: { id: reservationId },
           data: { status: RESERVATION_STATUS.EXPIRED },
           include: this.paymentResultInclude(),
         });
+        this.logger.warn({
+          action: 'payment.expired',
+          reservationId,
+          userId: currentUserId,
+        });
+
+        return expired;
       }
 
       if (dto.outcome === PAYMENT_STATUS.DECLINED) {
@@ -91,11 +101,18 @@ export class PaymentsService {
           },
         });
 
-        return tx.reservation.update({
+        const declined = await tx.reservation.update({
           where: { id: reservationId },
           data: { status: RESERVATION_STATUS.DECLINED },
           include: this.paymentResultInclude(),
         });
+        this.logger.warn({
+          action: 'payment.declined',
+          reservationId,
+          userId: currentUserId,
+        });
+
+        return declined;
       }
 
       await tx.payment.update({
@@ -112,6 +129,12 @@ export class PaymentsService {
         where: { id: reservationId },
         data: { status: RESERVATION_STATUS.CONFIRMED },
         include: this.paymentResultInclude(),
+      });
+      this.logger.log({
+        action: 'payment.approved',
+        reservationId,
+        userId: currentUserId,
+        tickets: tickets.length,
       });
 
       return {

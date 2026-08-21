@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   BadRequestException,
   ConflictException,
+  Logger,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -20,12 +21,32 @@ const EVENT_STATUS = {
 
 @Injectable()
 export class EventsService {
+  private readonly logger = new Logger(EventsService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   async findAll(filters: EventsFilterDto) {
-    const page = parseInt(filters.page || '1', 10);
-    const limit = parseInt(filters.limit || '12', 10);
+    const page = filters.page || 1;
+    const limit = filters.limit || 12;
     const skip = (page - 1) * limit;
+
+    if (
+      filters.dateFrom &&
+      filters.dateTo &&
+      new Date(filters.dateFrom) > new Date(filters.dateTo)
+    ) {
+      throw new BadRequestException('dateFrom deve ser anterior a dateTo');
+    }
+
+    if (
+      filters.minPrice !== undefined &&
+      filters.maxPrice !== undefined &&
+      filters.minPrice > filters.maxPrice
+    ) {
+      throw new BadRequestException(
+        'minPrice deve ser menor ou igual a maxPrice',
+      );
+    }
 
     const where: Prisma.EventWhereInput = {
       status: EVENT_STATUS.PUBLISHED,
@@ -55,8 +76,8 @@ export class EventsService {
 
     if (filters.minPrice || filters.maxPrice) {
       where.price = {
-        ...(filters.minPrice ? { gte: parseFloat(filters.minPrice) } : {}),
-        ...(filters.maxPrice ? { lte: parseFloat(filters.maxPrice) } : {}),
+        ...(filters.minPrice !== undefined ? { gte: filters.minPrice } : {}),
+        ...(filters.maxPrice !== undefined ? { lte: filters.maxPrice } : {}),
       };
     }
 
@@ -111,7 +132,7 @@ export class EventsService {
       }
     }
 
-    return this.prisma.event.create({
+    const event = await this.prisma.event.create({
       data: {
         ...dto,
         date: new Date(dto.date),
@@ -120,6 +141,9 @@ export class EventsService {
         status: EVENT_STATUS.DRAFT,
       },
     });
+    this.logger.log({ action: 'event.create', eventId: event.id, organizerId });
+
+    return event;
   }
 
   async update(id: string, dto: UpdateEventDto, organizerId: string) {
@@ -140,10 +164,13 @@ export class EventsService {
     const updateData: Prisma.EventUpdateInput = { ...dto };
     if (dto.date) updateData.date = new Date(dto.date);
 
-    return this.prisma.event.update({
+    const updated = await this.prisma.event.update({
       where: { id },
       data: updateData,
     });
+    this.logger.log({ action: 'event.update', eventId: id, organizerId });
+
+    return updated;
   }
 
   async remove(id: string, organizerId: string) {
@@ -159,7 +186,10 @@ export class EventsService {
       throw new BadRequestException('Cancele o evento antes de excluí-lo');
     }
 
-    return this.prisma.event.delete({ where: { id } });
+    const deleted = await this.prisma.event.delete({ where: { id } });
+    this.logger.log({ action: 'event.remove', eventId: id, organizerId });
+
+    return deleted;
   }
 
   async publish(id: string, organizerId: string) {
@@ -189,10 +219,13 @@ export class EventsService {
       );
     }
 
-    return this.prisma.event.update({
+    const published = await this.prisma.event.update({
       where: { id },
       data: { status: EVENT_STATUS.PUBLISHED },
     });
+    this.logger.log({ action: 'event.publish', eventId: id, organizerId });
+
+    return published;
   }
 
   async cancel(id: string, organizerId: string) {
@@ -208,10 +241,42 @@ export class EventsService {
       throw new BadRequestException('Este evento já está cancelado');
     }
 
-    return this.prisma.event.update({
-      where: { id },
-      data: { status: EVENT_STATUS.CANCELLED },
+    const cancelled = await this.prisma.$transaction(async (tx) => {
+      await tx.ticket.updateMany({
+        where: {
+          reservation: { eventId: id },
+          status: { in: ['ACTIVE', 'PENDING'] },
+        },
+        data: { status: 'CANCELLED' },
+      });
+
+      await tx.payment.updateMany({
+        where: {
+          reservation: {
+            eventId: id,
+            status: { in: ['PENDING', 'CONFIRMED'] },
+          },
+          status: 'PENDING',
+        },
+        data: { status: 'DECLINED' },
+      });
+
+      await tx.reservation.updateMany({
+        where: { eventId: id, status: { in: ['PENDING', 'CONFIRMED'] } },
+        data: { status: 'CANCELLED' },
+      });
+
+      return tx.event.update({
+        where: { id },
+        data: {
+          status: EVENT_STATUS.CANCELLED,
+          availableTickets: 0,
+        },
+      });
     });
+    this.logger.warn({ action: 'event.cancel', eventId: id, organizerId });
+
+    return cancelled;
   }
 
   async findByOrganizer(organizerId: string) {
