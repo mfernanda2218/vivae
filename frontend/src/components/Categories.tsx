@@ -16,6 +16,7 @@ export function Categories({ activeCategory }: { activeCategory?: string }) {
     } else {
       params.set("category", category);
     }
+    params.delete("page");
 
     const query = params.toString();
     router.push(query ? `?${query}` : "?");
@@ -32,7 +33,7 @@ export function Categories({ activeCategory }: { activeCategory?: string }) {
             key={category}
             type="button"
             onClick={() => selectCategory(category)}
-            className={`h-10 rounded-md border px-4 text-sm font-semibold transition-colors ${
+            className={`h-10 rounded-md border px-4 text-sm font-semibold transition-all duration-200 hover:-translate-y-0.5 ${
               isActive
                 ? "border-accent bg-accent text-background"
                 : "border-surface-2 bg-surface text-muted-foreground hover:border-accent hover:text-text"

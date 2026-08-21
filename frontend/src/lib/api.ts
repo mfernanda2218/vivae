@@ -146,6 +146,10 @@ export async function getReservation(id: string): Promise<Reservation | null> {
   }
 }
 
+export async function cancelReservation(id: string): Promise<Reservation> {
+  return apiMutation<Reservation>(`/reservations/${id}/cancel`);
+}
+
 export async function getTickets(): Promise<TicketWithQr[]> {
   try {
     return await apiFetch<TicketWithQr[]>("/tickets");

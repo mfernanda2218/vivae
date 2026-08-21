@@ -6,6 +6,7 @@ import {
   Camera,
   CheckCircle2,
   Keyboard,
+  Loader2,
   RefreshCcw,
   ScanLine,
   TicketCheck,
@@ -13,6 +14,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { cancelGateTicket, validateGateTicket } from "@/lib/api";
+import { useToast } from "@/components/ToastProvider";
 import type { Event, GateResult, GateResultCode } from "@/types/event";
 
 type BarcodeDetectorConstructor = new (options?: {
@@ -64,6 +66,7 @@ function formatDate(value: string) {
 }
 
 export function GateClient({ events }: { events: Event[] }) {
+  const { showToast } = useToast();
   const [eventId, setEventId] = useState(events[0]?.id || "");
   const [identifier, setIdentifier] = useState("");
   const [result, setResult] = useState<GateResult | null>(null);
@@ -88,6 +91,11 @@ export function GateClient({ events }: { events: Event[] }) {
       const nextIdentifier = (forcedIdentifier || identifier).trim();
       if (!nextIdentifier) {
         setError("Informe o QR, link ou codigo do ingresso.");
+        showToast({
+          title: "Identificador vazio",
+          description: "Cole o QR, link ou codigo antes de continuar.",
+          variant: "error",
+        });
         return;
       }
 
@@ -100,13 +108,25 @@ export function GateClient({ events }: { events: Event[] }) {
             ? await validateGateTicket({ identifier: nextIdentifier, eventId })
             : await cancelGateTicket({ identifier: nextIdentifier, eventId });
         setResult(response);
+        showToast({
+          title: response.message,
+          description: response.ticket?.code,
+          variant: response.valid ? "success" : "error",
+        });
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Nao foi possivel processar o ingresso.");
+        const message =
+          err instanceof Error ? err.message : "Nao foi possivel processar o ingresso.";
+        setError(message);
+        showToast({
+          title: "Falha na portaria",
+          description: message,
+          variant: "error",
+        });
       } finally {
         setIsSubmitting(false);
       }
     },
-    [eventId, identifier],
+    [eventId, identifier, showToast],
   );
 
   useEffect(() => {
@@ -261,8 +281,12 @@ export function GateClient({ events }: { events: Event[] }) {
               disabled={isSubmitting || !eventId}
               className="flex h-11 items-center justify-center gap-2 rounded-md bg-accent px-4 text-sm font-black text-background transition-colors hover:bg-accent/90 disabled:opacity-50"
             >
-              <TicketCheck className="h-4 w-4" />
-              Validar entrada
+              {isSubmitting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <TicketCheck className="h-4 w-4" />
+              )}
+              {isSubmitting ? "Validando" : "Validar entrada"}
             </button>
             <button
               type="button"

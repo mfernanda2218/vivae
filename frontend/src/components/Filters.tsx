@@ -28,8 +28,18 @@ export function Filters() {
       if (value) params.set(key, value);
       else params.delete(key);
     });
+    params.delete("page");
 
     router.push(`/eventos?${params.toString()}`);
+  }
+
+  function clearFilters() {
+    setCity("");
+    setDateFrom("");
+    setDateTo("");
+    setMinPrice("");
+    setMaxPrice("");
+    router.push("/eventos");
   }
 
   return (
@@ -94,12 +104,21 @@ export function Filters() {
             />
           </label>
         </div>
-        <button
-          type="submit"
-          className="h-10 rounded-md bg-accent px-4 text-sm font-bold text-background transition-colors hover:bg-accent/90"
-        >
-          Aplicar filtros
-        </button>
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
+          <button
+            type="submit"
+            className="h-10 rounded-md bg-accent px-4 text-sm font-bold text-background transition-all duration-200 hover:-translate-y-0.5 hover:bg-accent/90"
+          >
+            Aplicar filtros
+          </button>
+          <button
+            type="button"
+            onClick={clearFilters}
+            className="h-10 rounded-md border border-surface-2 px-4 text-sm font-bold text-text transition-colors hover:bg-background"
+          >
+            Limpar
+          </button>
+        </div>
       </form>
     </aside>
   );

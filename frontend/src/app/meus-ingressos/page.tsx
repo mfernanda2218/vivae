@@ -1,6 +1,7 @@
-import Link from "next/link";
-import { CalendarDays, MapPin, Share2, Ticket } from "lucide-react";
+import { CalendarDays, MapPin, Ticket } from "lucide-react";
+import { EmptyState } from "@/components/EmptyState";
 import { getTickets } from "@/lib/api";
+import { TicketActions } from "./TicketActions";
 
 export const dynamic = "force-dynamic";
 
@@ -28,23 +29,13 @@ export default async function MyTicketsPage() {
       </div>
 
       {tickets.length === 0 ? (
-        <div className="flex flex-col items-start gap-4 rounded-lg border border-surface-2 bg-surface p-6">
-          <span className="flex h-12 w-12 items-center justify-center rounded-md bg-background text-accent">
-            <Ticket className="h-6 w-6" />
-          </span>
-          <div>
-            <h2 className="text-xl font-black text-text">Nenhum ingresso por enquanto</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Quando um pagamento for aprovado, seus QR Codes aparecem aqui.
-            </p>
-          </div>
-          <Link
-            href="/eventos"
-            className="rounded-md bg-accent px-4 py-2 text-sm font-black text-background transition-colors hover:bg-accent/90"
-          >
-            Encontrar eventos
-          </Link>
-        </div>
+        <EmptyState
+          icon={Ticket}
+          title="Nenhum ingresso por enquanto"
+          description="Quando um pagamento for aprovado, seus QR Codes aparecem aqui."
+          actionLabel="Encontrar eventos"
+          actionHref="/eventos"
+        />
       ) : (
         <div className="grid gap-5 lg:grid-cols-2">
           {tickets.map((ticket) => (
@@ -82,13 +73,11 @@ export default async function MyTicketsPage() {
                   </span>
                 </div>
 
-                <Link
-                  href={ticket.shareUrl}
-                  className="flex h-10 w-fit items-center gap-2 rounded-md border border-surface-2 px-3 text-sm font-bold text-text transition-colors hover:bg-surface-2"
-                >
-                  <Share2 className="h-4 w-4" />
-                  Compartilhar
-                </Link>
+                <TicketActions
+                  reservationId={ticket.reservation.id}
+                  shareUrl={ticket.shareUrl}
+                  code={ticket.code}
+                />
               </div>
 
               <div className="flex flex-col items-center justify-center gap-3 rounded-md bg-white p-3">
