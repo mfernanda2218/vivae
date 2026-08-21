@@ -81,6 +81,7 @@ model Ticket {
   id            String       @id @default(uuid())
   reservationId String
   code          String       @unique
+  qrToken       String?      @unique
   qrTokenHash   String
   status        String       @default("ACTIVE")
   validatedAt   DateTime?

@@ -188,8 +188,7 @@ export class TicketmasterProvider {
     const imageUrl =
       event.images?.find(
         (image) => image.ratio === '16_9' && (image.width ?? 0) >= 1024,
-      )
-        ?.url ||
+      )?.url ||
       event.images?.[0]?.url ||
       '';
 
