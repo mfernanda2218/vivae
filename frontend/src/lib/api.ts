@@ -1,4 +1,11 @@
-import type { CatalogEvent, Event, EventFilters, EventsResponse } from "@/types/event";
+import type {
+  CatalogEvent,
+  Event,
+  EventFilters,
+  EventsResponse,
+  Reservation,
+  TicketWithQr,
+} from "@/types/event";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 
@@ -22,6 +29,25 @@ async function apiFetch<T>(path: string, filters?: object): Promise<T> {
 
   if (!response.ok) {
     throw new Error(`API request failed with status ${response.status}`);
+  }
+
+  return response.json() as Promise<T>;
+}
+
+async function apiMutation<T>(path: string, body?: object): Promise<T> {
+  const response = await fetch(buildUrl(path), {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body || {}),
+  });
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null);
+    const message = payload?.message || `API request failed with status ${response.status}`;
+    throw new Error(Array.isArray(message) ? message.join(", ") : message);
   }
 
   return response.json() as Promise<T>;
@@ -56,5 +82,54 @@ export async function getCatalogEvents(query?: EventFilters) {
     }>("/catalog/events", query);
   } catch {
     return { events: [], total: 0, page: 0, totalPages: 0 };
+  }
+}
+
+export async function createReservation(input: {
+  eventId: string;
+  quantity: number;
+}): Promise<Reservation> {
+  return apiMutation<Reservation>("/reservations", input);
+}
+
+export async function processPayment(input: {
+  reservationId: string;
+  outcome: "APPROVED" | "DECLINED";
+  method?: string;
+}): Promise<Reservation> {
+  return apiMutation<Reservation>(`/payments/${input.reservationId}`, {
+    outcome: input.outcome,
+    method: input.method || "CARD",
+  });
+}
+
+export async function getReservation(id: string): Promise<Reservation | null> {
+  try {
+    return await apiFetch<Reservation>(`/reservations/${id}`);
+  } catch {
+    return null;
+  }
+}
+
+export async function getTickets(): Promise<TicketWithQr[]> {
+  try {
+    return await apiFetch<TicketWithQr[]>("/tickets");
+  } catch {
+    return [];
+  }
+}
+
+export async function getPublicTicket(token: string): Promise<{
+  id: string;
+  code: string;
+  status: string;
+  qrCodeDataUrl: string;
+  event: Reservation["event"];
+  createdAt: string;
+} | null> {
+  try {
+    return await apiFetch(`/tickets/public/${token}`);
+  } catch {
+    return null;
   }
 }

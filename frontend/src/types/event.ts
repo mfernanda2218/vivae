@@ -53,3 +53,59 @@ export interface CatalogEvent {
   date: string;
   location: string;
 }
+
+export type ReservationStatus =
+  | "PENDING"
+  | "CONFIRMED"
+  | "CANCELLED"
+  | "DECLINED"
+  | "EXPIRED";
+
+export type PaymentStatus = "PENDING" | "APPROVED" | "DECLINED";
+
+export interface Payment {
+  id: string;
+  reservationId: string;
+  amount: number;
+  status: PaymentStatus;
+  method: string;
+}
+
+export interface Reservation {
+  id: string;
+  userId: string;
+  eventId: string;
+  quantity: number;
+  status: ReservationStatus;
+  expiresAt: string;
+  createdAt: string;
+  event: Pick<
+    Event,
+    "id" | "title" | "date" | "location" | "imageUrl" | "price" | "category"
+  >;
+  payment: Payment | null;
+  tickets: Array<{
+    id: string;
+    code: string;
+    status: string;
+    createdAt: string;
+  }>;
+  issuedTickets?: number;
+}
+
+export interface TicketWithQr {
+  id: string;
+  code: string;
+  status: string;
+  createdAt: string;
+  shareUrl: string;
+  qrPayload: string;
+  qrCodeDataUrl: string;
+  reservation: {
+    id: string;
+    quantity: number;
+    status: ReservationStatus;
+    event: Reservation["event"];
+    payment: Payment | null;
+  };
+}
