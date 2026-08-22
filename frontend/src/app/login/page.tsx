@@ -33,8 +33,8 @@ export default function LoginPage() {
             localStorage.setItem("vivae_user", JSON.stringify(response.user));
 
             // Salvar em cookies para o middleware
-            document.cookie = `vivae_token=${response.accessToken}; path=/; max-age=604800`;
-            document.cookie = `vivae_user=${encodeURIComponent(JSON.stringify(response.user))}; path=/; max-age=604800`;
+            document.cookie = `vivae_token=${response.accessToken}; path=/; max-age=604800; samesite=lax`;
+            document.cookie = `vivae_user=${encodeURIComponent(JSON.stringify(response.user))}; path=/; max-age=604800; samesite=lax`;
 
             showToast({
                 title: "Login realizado",
