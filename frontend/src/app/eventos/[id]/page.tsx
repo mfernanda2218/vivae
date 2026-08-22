@@ -1,3 +1,4 @@
+// app/eventos/[id]/page.tsx
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CalendarDays, MapPin, Ticket, UserRound } from "lucide-react";

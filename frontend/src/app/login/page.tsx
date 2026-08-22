@@ -7,6 +7,7 @@ import Link from "next/link";
 import { Eye, EyeOff, Loader2, LogIn, Mail, ShieldCheck, User } from "lucide-react";
 import { login } from "@/lib/api";
 import { useToast } from "@/components/ToastProvider";
+import { roleHome, Role } from "@/lib/roles";
 
 export default function LoginPage() {
     const router = useRouter();
@@ -32,29 +33,19 @@ export default function LoginPage() {
             localStorage.setItem("vivae_token", response.accessToken);
             localStorage.setItem("vivae_user", JSON.stringify(response.user));
 
-            // Salvar em cookies para o middleware
-            document.cookie = `vivae_token=${response.accessToken}; path=/; max-age=604800; samesite=lax`;
-            document.cookie = `vivae_user=${encodeURIComponent(JSON.stringify(response.user))}; path=/; max-age=604800; samesite=lax`;
-
             showToast({
                 title: "Login realizado",
                 description: `Bem-vindo(a), ${response.user.name}!`,
                 variant: "success",
             });
 
-            // Determinar destino
-            let destination;
-            if (redirectTo) {
-                destination = redirectTo;
-            } else {
-                destination =
-                    response.user.role === "ORGANIZER" ? "/dashboard" :
-                        response.user.role === "GATE" ? "/portaria" :
-                            "/eventos";
-            }
+            // Redirecionar baseado no role
+            const userRole = response.user.role as Role;
+            const destination = roleHome[userRole] || "/eventos";
 
-            router.push(destination);
-            router.refresh();
+            // Usar window.location para forçar navegação completa
+            window.location.href = destination;
+
         } catch (err) {
             const message =
                 err instanceof Error ? err.message : "Credenciais inválidas. Verifique seu e-mail e senha.";

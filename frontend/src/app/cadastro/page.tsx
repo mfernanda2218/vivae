@@ -7,6 +7,7 @@ import Link from "next/link";
 import { Eye, EyeOff, Loader2, Mail, ShieldCheck, User, UserPlus } from "lucide-react";
 import { register } from "@/lib/api";
 import { useToast } from "@/components/ToastProvider";
+import { roleHome, Role } from "@/components/RoleGuard";
 
 export default function RegisterPage() {
     const router = useRouter();
@@ -48,10 +49,6 @@ export default function RegisterPage() {
             localStorage.setItem("vivae_token", response.accessToken);
             localStorage.setItem("vivae_user", JSON.stringify(response.user));
 
-            // Salvar em cookies para o middleware
-            document.cookie = `vivae_token=${response.accessToken}; path=/; max-age=604800`;
-            document.cookie = `vivae_user=${encodeURIComponent(JSON.stringify(response.user))}; path=/; max-age=604800`;
-
             showToast({
                 title: "Conta criada com sucesso",
                 description: `Bem-vindo(a), ${response.user.name}!`,
@@ -59,13 +56,11 @@ export default function RegisterPage() {
             });
 
             // Redirecionar baseado no role
-            const destination =
-                role === "ORGANIZER" ? "/dashboard" :
-                    role === "GATE" ? "/portaria" :
-                        "/eventos";
+            const destination = roleHome[role] || "/eventos";
 
-            router.push(destination);
-            router.refresh();
+            // Usar window.location para forçar navegação completa
+            window.location.href = destination;
+
         } catch (err) {
             const message =
                 err instanceof Error ? err.message : "Não foi possível criar a conta.";
@@ -193,8 +188,8 @@ export default function RegisterPage() {
                             type="button"
                             onClick={() => setRole("CUSTOMER")}
                             className={`rounded-md border p-3 text-center transition-all ${role === "CUSTOMER"
-                                    ? "border-accent bg-accent/10"
-                                    : "border-surface-2 hover:bg-surface-2"
+                                ? "border-accent bg-accent/10"
+                                : "border-surface-2 hover:bg-surface-2"
                                 }`}
                         >
                             <span className="block text-sm font-bold text-text">Cliente</span>
@@ -204,8 +199,8 @@ export default function RegisterPage() {
                             type="button"
                             onClick={() => setRole("ORGANIZER")}
                             className={`rounded-md border p-3 text-center transition-all ${role === "ORGANIZER"
-                                    ? "border-accent bg-accent/10"
-                                    : "border-surface-2 hover:bg-surface-2"
+                                ? "border-accent bg-accent/10"
+                                : "border-surface-2 hover:bg-surface-2"
                                 }`}
                         >
                             <span className="block text-sm font-bold text-text">Organizador</span>
@@ -215,8 +210,8 @@ export default function RegisterPage() {
                             type="button"
                             onClick={() => setRole("GATE")}
                             className={`rounded-md border p-3 text-center transition-all ${role === "GATE"
-                                    ? "border-accent bg-accent/10"
-                                    : "border-surface-2 hover:bg-surface-2"
+                                ? "border-accent bg-accent/10"
+                                : "border-surface-2 hover:bg-surface-2"
                                 }`}
                         >
                             <span className="block text-sm font-bold text-text">Portaria</span>
