@@ -13,7 +13,7 @@ import type { LoginResponse, LoginRequest } from "@/types/auth";
 
 import type { RegisterRequest, RegisterResponse } from "@/types/auth";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://vivae.onrender.com";
 
 function buildUrl(path: string, filters?: object) {
   const url = new URL(path, API_URL);
