@@ -18,12 +18,12 @@ export default function RegisterPage() {
     const [showPassword, setShowPassword] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState("");
+    const [role, setRole] = useState<"CUSTOMER" | "ORGANIZER" | "GATE">("CUSTOMER");
 
     async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
         setError("");
 
-        // Validações
         if (password.length < 8) {
             setError("A senha deve ter no mínimo 8 caracteres.");
             return;
@@ -41,12 +41,16 @@ export default function RegisterPage() {
                 name,
                 email,
                 password,
-                role: "CUSTOMER", // Sempre criar como cliente no cadastro público
+                role,
             });
 
-            // Salvar token e user ID no localStorage
+            // Salvar no localStorage
             localStorage.setItem("vivae_token", response.accessToken);
             localStorage.setItem("vivae_user", JSON.stringify(response.user));
+
+            // Salvar em cookies para o middleware
+            document.cookie = `vivae_token=${response.accessToken}; path=/; max-age=604800`;
+            document.cookie = `vivae_user=${encodeURIComponent(JSON.stringify(response.user))}; path=/; max-age=604800`;
 
             showToast({
                 title: "Conta criada com sucesso",
@@ -54,8 +58,13 @@ export default function RegisterPage() {
                 variant: "success",
             });
 
-            // Redirecionar para eventos
-            router.push("/eventos");
+            // Redirecionar baseado no role
+            const destination =
+                role === "ORGANIZER" ? "/dashboard" :
+                    role === "GATE" ? "/portaria" :
+                        "/eventos";
+
+            router.push(destination);
             router.refresh();
         } catch (err) {
             const message =
@@ -172,6 +181,49 @@ export default function RegisterPage() {
                         className="h-11 rounded-md border border-surface-2 bg-background px-3 text-sm text-text outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-accent"
                     />
                 </label>
+
+                {/* Seletor de Tipo de Conta */}
+                <div className="flex flex-col gap-2">
+                    <span className="flex items-center gap-2 text-sm font-bold text-text">
+                        <UserPlus className="h-4 w-4 text-accent" />
+                        Tipo de conta
+                    </span>
+                    <div className="grid gap-2 sm:grid-cols-3">
+                        <button
+                            type="button"
+                            onClick={() => setRole("CUSTOMER")}
+                            className={`rounded-md border p-3 text-center transition-all ${role === "CUSTOMER"
+                                    ? "border-accent bg-accent/10"
+                                    : "border-surface-2 hover:bg-surface-2"
+                                }`}
+                        >
+                            <span className="block text-sm font-bold text-text">Cliente</span>
+                            <span className="text-xs text-muted-foreground">Compra ingressos</span>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setRole("ORGANIZER")}
+                            className={`rounded-md border p-3 text-center transition-all ${role === "ORGANIZER"
+                                    ? "border-accent bg-accent/10"
+                                    : "border-surface-2 hover:bg-surface-2"
+                                }`}
+                        >
+                            <span className="block text-sm font-bold text-text">Organizador</span>
+                            <span className="text-xs text-muted-foreground">Cria eventos</span>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setRole("GATE")}
+                            className={`rounded-md border p-3 text-center transition-all ${role === "GATE"
+                                    ? "border-accent bg-accent/10"
+                                    : "border-surface-2 hover:bg-surface-2"
+                                }`}
+                        >
+                            <span className="block text-sm font-bold text-text">Portaria</span>
+                            <span className="text-xs text-muted-foreground">Valida ingressos</span>
+                        </button>
+                    </div>
+                </div>
 
                 {/* Mensagem de erro */}
                 {error && (

@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Eye, EyeOff, Loader2, LogIn, Mail, ShieldCheck, User } from "lucide-react";
 import { login } from "@/lib/api";
@@ -10,12 +10,15 @@ import { useToast } from "@/components/ToastProvider";
 
 export default function LoginPage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { showToast } = useToast();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState("");
+
+    const redirectTo = searchParams.get("redirect");
 
     async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
@@ -25,9 +28,13 @@ export default function LoginPage() {
         try {
             const response = await login({ email, password });
 
-            // Salvar token e user ID no localStorage/sessionStorage
+            // Salvar no localStorage
             localStorage.setItem("vivae_token", response.accessToken);
             localStorage.setItem("vivae_user", JSON.stringify(response.user));
+
+            // Salvar em cookies para o middleware
+            document.cookie = `vivae_token=${response.accessToken}; path=/; max-age=604800`;
+            document.cookie = `vivae_user=${encodeURIComponent(JSON.stringify(response.user))}; path=/; max-age=604800`;
 
             showToast({
                 title: "Login realizado",
@@ -35,11 +42,16 @@ export default function LoginPage() {
                 variant: "success",
             });
 
-            // Redirecionar baseado no role
-            const destination =
-                response.user.role === "ORGANIZER" || response.user.role === "GATE"
-                    ? "/dashboard"
-                    : "/eventos";
+            // Determinar destino
+            let destination;
+            if (redirectTo) {
+                destination = redirectTo;
+            } else {
+                destination =
+                    response.user.role === "ORGANIZER" ? "/dashboard" :
+                        response.user.role === "GATE" ? "/portaria" :
+                            "/eventos";
+            }
 
             router.push(destination);
             router.refresh();
