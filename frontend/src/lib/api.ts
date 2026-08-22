@@ -9,6 +9,8 @@ import type {
   TicketWithQr,
 } from "@/types/event";
 
+import type { LoginResponse, LoginRequest } from "@/types/auth";
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 
 function buildUrl(path: string, filters?: object) {
@@ -118,6 +120,23 @@ export async function getCatalogEvents(query?: EventFilters) {
   } catch {
     return { events: [], total: 0, page: 0, totalPages: 0 };
   }
+}
+
+export async function login(data: LoginRequest): Promise<LoginResponse> {
+  const response = await fetch(`${API_URL}/auth/login`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => null);
+    throw new Error(error?.message || "Falha ao realizar login");
+  }
+
+  return response.json();
 }
 
 export async function createReservation(input: {
