@@ -11,6 +11,8 @@ import type {
 
 import type { LoginResponse, LoginRequest } from "@/types/auth";
 
+import type { RegisterRequest, RegisterResponse } from "@/types/auth";
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 
 function buildUrl(path: string, filters?: object) {
@@ -88,6 +90,23 @@ async function apiFetchNoStore<T>(path: string, filters?: object): Promise<T> {
   }
 
   return response.json() as Promise<T>;
+}
+
+export async function register(data: RegisterRequest): Promise<RegisterResponse> {
+  const response = await fetch(`${API_URL}/auth/register`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => null);
+    throw new Error(error?.message || "Falha ao criar conta");
+  }
+
+  return response.json();
 }
 
 export async function getEvents(filters?: EventFilters): Promise<EventsResponse> {

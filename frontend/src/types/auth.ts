@@ -17,3 +17,15 @@ export interface LoginResponse {
     accessToken: string;
     user: User;
 }
+
+export interface RegisterRequest {
+    name: string;
+    email: string;
+    password: string;
+    role?: UserRole;
+}
+
+export interface RegisterResponse {
+    accessToken: string;
+    user: User;
+}
