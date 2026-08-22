@@ -1,10 +1,12 @@
+// prisma/seed.ts
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  const passwordHash = await bcrypt.hash('123456', 10);
+  // Senha com 8+ caracteres para atender à validação do backend
+  const passwordHash = await bcrypt.hash('password123', 12);
 
   const organizer = await prisma.user.upsert({
     where: { email: 'organizer@vivae.com' },
@@ -113,7 +115,11 @@ async function main() {
     }),
   ]);
 
-  console.log({ organizer, customer1, customer2, gate, events });
+  console.log('Seed concluído com sucesso!');
+  console.log({
+    users: { organizer, customer1, customer2, gate },
+    events: events.map(e => ({ id: e.id, title: e.title })),
+  });
 }
 
 main()
