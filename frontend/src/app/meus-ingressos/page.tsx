@@ -1,3 +1,4 @@
+// app/meus-ingressos/page.tsx
 import { RoleGuard } from "@/components/RoleGuard";
 import { CalendarDays, MapPin, Ticket } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
@@ -79,6 +80,10 @@ export default async function MyTicketsPage() {
                     reservationId={ticket.reservation.id}
                     shareUrl={ticket.shareUrl}
                     code={ticket.code}
+                    qrCodeDataUrl={ticket.qrCodeDataUrl}
+                    eventTitle={ticket.reservation.event.title}
+                    eventDate={formatDate(ticket.reservation.event.date)}
+                    eventLocation={ticket.reservation.event.location}
                   />
                 </div>
 

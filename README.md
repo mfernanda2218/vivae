@@ -84,7 +84,7 @@ O seed cria:
 - Organizador: `organizer@vivae.com`
 - Clientes: `cliente1@vivae.com`, `cliente2@vivae.com`
 - Portaria: `portaria@vivae.com`
-- Senha demo: `123456`
+- Senha demo: `password123`
 
 ## Backend
 
