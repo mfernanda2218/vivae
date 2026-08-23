@@ -56,7 +56,8 @@ export default function RegisterPage() {
             });
 
             // Redirecionar baseado no role
-            const destination = roleHome[role] || "/eventos";
+            const userRole = response.user.role as Role;
+            const destination = roleHome[userRole] || "/eventos";
 
             // Usar window.location para forçar navegação completa
             window.location.href = destination;

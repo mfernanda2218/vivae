@@ -21,7 +21,7 @@ export const roleHome: Record<Role, string> = {
 
 export function RoleGuard({
     children,
-    allowedRoles
+    allowedRoles,
 }: {
     children: React.ReactNode;
     allowedRoles: Role[];
@@ -34,6 +34,7 @@ export function RoleGuard({
         const userData = localStorage.getItem("vivae_user");
 
         if (!userData) {
+            // Não redirecionar para /eventos, ir para login
             router.push("/login");
             return;
         }

@@ -41,7 +41,7 @@ export default function LoginPage() {
 
             // Redirecionar baseado no role
             const userRole = response.user.role as Role;
-            const destination = roleHome[userRole] || "/eventos";
+            const destination = redirectTo || roleHome[userRole] || "/eventos";
 
             // Usar window.location para forçar navegação completa
             window.location.href = destination;
