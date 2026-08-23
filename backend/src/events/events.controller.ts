@@ -20,12 +20,15 @@ import { EventsService } from './events.service';
 @ApiTags('Events')
 @Controller('events')
 export class EventsController {
-  constructor(private readonly eventsService: EventsService) {}
+  constructor(private readonly eventsService: EventsService) { }
 
   @Get()
   @ApiOperation({ summary: 'Lista eventos publicados com filtros' })
-  findAll(@Query() filters: EventsFilterDto) {
-    return this.eventsService.findAll(filters);
+  findAll(
+    @Query() filters: EventsFilterDto,
+    @Headers('x-organizer-id') organizerId?: string,
+  ) {
+    return this.eventsService.findAll(filters, organizerId);
   }
 
   @Get(':id')

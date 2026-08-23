@@ -1,3 +1,4 @@
+// lib/api.ts
 import type {
   CatalogEvent,
   Event,
@@ -27,9 +28,34 @@ function buildUrl(path: string, filters?: object) {
   return url.toString();
 }
 
+function getOrganizerId(): string | undefined {
+  if (typeof window !== 'undefined') {
+    const userData = localStorage.getItem('vivae_user');
+    if (userData) {
+      try {
+        const user = JSON.parse(userData);
+        if (user.role === 'ORGANIZER' && user.id) {
+          return user.id;
+        }
+      } catch {
+        // Ignorar erro de parsing
+        return undefined;
+      }
+    }
+  }
+  return undefined;
+}
+
 async function apiFetch<T>(path: string, filters?: object): Promise<T> {
+  const organizerId = getOrganizerId();
+  const headers: Record<string, string> = { Accept: 'application/json' };
+
+  if (organizerId) {
+    headers['x-organizer-id'] = organizerId;
+  }
+
   const response = await fetch(buildUrl(path, filters), {
-    headers: { Accept: "application/json" },
+    headers,
     next: { revalidate: 30 },
   });
 
@@ -41,48 +67,69 @@ async function apiFetch<T>(path: string, filters?: object): Promise<T> {
 }
 
 async function apiMutation<T>(path: string, body?: object): Promise<T> {
+  const organizerId = getOrganizerId();
+  const headers: Record<string, string> = {
+    Accept: 'application/json',
+    'Content-Type': 'application/json',
+  };
+
+  if (organizerId) {
+    headers['x-organizer-id'] = organizerId;
+  }
+
   const response = await fetch(buildUrl(path), {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-    },
+    method: 'POST',
+    headers,
     body: JSON.stringify(body || {}),
   });
 
   if (!response.ok) {
     const payload = await response.json().catch(() => null);
     const message = payload?.message || `API request failed with status ${response.status}`;
-    throw new Error(Array.isArray(message) ? message.join(", ") : message);
+    throw new Error(Array.isArray(message) ? message.join(', ') : message);
   }
 
   return response.json() as Promise<T>;
 }
 
 async function apiPost<T>(path: string, body?: object): Promise<T> {
+  const organizerId = getOrganizerId();
+  const headers: Record<string, string> = {
+    Accept: 'application/json',
+    'Content-Type': 'application/json',
+  };
+
+  if (organizerId) {
+    headers['x-organizer-id'] = organizerId;
+  }
+
   const response = await fetch(buildUrl(path), {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-    },
+    method: 'POST',
+    headers,
     body: JSON.stringify(body || {}),
-    cache: "no-store",
+    cache: 'no-store',
   });
 
   if (!response.ok) {
     const payload = await response.json().catch(() => null);
     const message = payload?.message || `API request failed with status ${response.status}`;
-    throw new Error(Array.isArray(message) ? message.join(", ") : message);
+    throw new Error(Array.isArray(message) ? message.join(', ') : message);
   }
 
   return response.json() as Promise<T>;
 }
 
 async function apiFetchNoStore<T>(path: string, filters?: object): Promise<T> {
+  const organizerId = getOrganizerId();
+  const headers: Record<string, string> = { Accept: 'application/json' };
+
+  if (organizerId) {
+    headers['x-organizer-id'] = organizerId;
+  }
+
   const response = await fetch(buildUrl(path, filters), {
-    headers: { Accept: "application/json" },
-    cache: "no-store",
+    headers,
+    cache: 'no-store',
   });
 
   if (!response.ok) {
@@ -94,16 +141,16 @@ async function apiFetchNoStore<T>(path: string, filters?: object): Promise<T> {
 
 export async function register(data: RegisterRequest): Promise<RegisterResponse> {
   const response = await fetch(`${API_URL}/auth/register`, {
-    method: "POST",
+    method: 'POST',
     headers: {
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json',
     },
     body: JSON.stringify(data),
   });
 
   if (!response.ok) {
     const error = await response.json().catch(() => null);
-    throw new Error(error?.message || "Falha ao criar conta");
+    throw new Error(error?.message || 'Falha ao criar conta');
   }
 
   return response.json();
@@ -111,7 +158,7 @@ export async function register(data: RegisterRequest): Promise<RegisterResponse>
 
 export async function getEvents(filters?: EventFilters): Promise<EventsResponse> {
   try {
-    return await apiFetch<EventsResponse>("/events", filters);
+    return await apiFetch<EventsResponse>('/events', filters);
   } catch {
     return {
       data: [],
@@ -135,7 +182,7 @@ export async function getCatalogEvents(query?: EventFilters) {
       total: number;
       page: number;
       totalPages: number;
-    }>("/catalog/events", query);
+    }>('/catalog/events', query);
   } catch {
     return { events: [], total: 0, page: 0, totalPages: 0 };
   }
@@ -143,16 +190,16 @@ export async function getCatalogEvents(query?: EventFilters) {
 
 export async function login(data: LoginRequest): Promise<LoginResponse> {
   const response = await fetch(`${API_URL}/auth/login`, {
-    method: "POST",
+    method: 'POST',
     headers: {
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json',
     },
     body: JSON.stringify(data),
   });
 
   if (!response.ok) {
     const error = await response.json().catch(() => null);
-    throw new Error(error?.message || "Falha ao realizar login");
+    throw new Error(error?.message || 'Falha ao realizar login');
   }
 
   return response.json();
@@ -162,17 +209,17 @@ export async function createReservation(input: {
   eventId: string;
   quantity: number;
 }): Promise<Reservation> {
-  return apiMutation<Reservation>("/reservations", input);
+  return apiMutation<Reservation>('/reservations', input);
 }
 
 export async function processPayment(input: {
   reservationId: string;
-  outcome: "APPROVED" | "DECLINED";
+  outcome: 'APPROVED' | 'DECLINED';
   method?: string;
 }): Promise<Reservation> {
   return apiMutation<Reservation>(`/payments/${input.reservationId}`, {
     outcome: input.outcome,
-    method: input.method || "CARD",
+    method: input.method || 'CARD',
   });
 }
 
@@ -190,7 +237,7 @@ export async function cancelReservation(id: string): Promise<Reservation> {
 
 export async function getTickets(): Promise<TicketWithQr[]> {
   try {
-    return await apiFetch<TicketWithQr[]>("/tickets");
+    return await apiFetch<TicketWithQr[]>('/tickets');
   } catch {
     return [];
   }
@@ -201,7 +248,7 @@ export async function getPublicTicket(token: string): Promise<{
   code: string;
   status: string;
   qrCodeDataUrl: string;
-  event: Reservation["event"];
+  event: Reservation['event'];
   createdAt: string;
 } | null> {
   try {
@@ -215,20 +262,20 @@ export async function validateGateTicket(input: {
   identifier: string;
   eventId?: string;
 }): Promise<GateResult> {
-  return apiPost<GateResult>("/gate/validate", input);
+  return apiPost<GateResult>('/gate/validate', input);
 }
 
 export async function cancelGateTicket(input: {
   identifier: string;
   eventId?: string;
 }): Promise<GateResult> {
-  return apiPost<GateResult>("/gate/cancel", input);
+  return apiPost<GateResult>('/gate/cancel', input);
 }
 
 export async function getGateDashboard(eventId?: string): Promise<GateDashboard | null> {
   try {
     return await apiFetchNoStore<GateDashboard>(
-      "/gate/dashboard",
+      '/gate/dashboard',
       eventId ? { eventId } : undefined,
     );
   } catch {

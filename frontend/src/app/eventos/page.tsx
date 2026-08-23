@@ -1,3 +1,4 @@
+// app/eventos/page.tsx
 import { Suspense } from "react";
 import { EventsGrid } from "@/components/EventsGrid";
 import { Filters } from "@/components/Filters";
@@ -31,6 +32,12 @@ export default async function EventsPage({ searchParams }: PageProps) {
     page: readParam(params, "page") || 1,
     limit: 16,
   };
+
+  // Verificar se o usuário é organizador e filtrar apenas seus eventos
+  const isOrganizer = typeof window !== 'undefined' &&
+    localStorage.getItem('vivae_user') &&
+    JSON.parse(localStorage.getItem('vivae_user') || '{}').role === 'ORGANIZER';
+
   const response = await getEvents(filters);
 
   return (

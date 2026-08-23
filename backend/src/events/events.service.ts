@@ -23,34 +23,18 @@ const EVENT_STATUS = {
 export class EventsService {
   private readonly logger = new Logger(EventsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
-  async findAll(filters: EventsFilterDto) {
+  async findAll(filters: EventsFilterDto, organizerId?: string) {
     const page = filters.page || 1;
     const limit = filters.limit || 12;
     const skip = (page - 1) * limit;
 
-    if (
-      filters.dateFrom &&
-      filters.dateTo &&
-      new Date(filters.dateFrom) > new Date(filters.dateTo)
-    ) {
-      throw new BadRequestException('dateFrom deve ser anterior a dateTo');
-    }
-
-    if (
-      filters.minPrice !== undefined &&
-      filters.maxPrice !== undefined &&
-      filters.minPrice > filters.maxPrice
-    ) {
-      throw new BadRequestException(
-        'minPrice deve ser menor ou igual a maxPrice',
-      );
-    }
-
-    const where: Prisma.EventWhereInput = {
-      status: EVENT_STATUS.PUBLISHED,
-    };
+    // Se for um organizador, filtrar por organizerId
+    // Se for um cliente, mostrar apenas eventos publicados
+    const where: Prisma.EventWhereInput = organizerId
+      ? { organizerId } // Organizador vê apenas seus eventos
+      : { status: EVENT_STATUS.PUBLISHED }; // Cliente vê apenas eventos publicados
 
     if (filters.search) {
       where.OR = [
