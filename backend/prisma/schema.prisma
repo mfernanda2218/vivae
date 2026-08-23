@@ -17,8 +17,18 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  // Relação de criação (portaria criada por organizador)
+  createdById  String?
+  createdBy    User?    @relation("UserCreation", fields: [createdById], references: [id])
+  createdUsers User[]   @relation("UserCreation")
+
+  // Eventos criados pelo organizador
+  events     Event[]  @relation("OrganizerEvents")
+  
+  // Eventos que esta portaria pode validar
+  gateEvents Event[]  @relation("GateEvents")
+
   reservations Reservation[]
-  events       Event[]       @relation("OrganizerEvents")
 }
 
 model Event {
@@ -35,11 +45,12 @@ model Event {
   price            Float
   status           EventStatus @default(DRAFT)
   organizerId      String
+  organizer        User        @relation("OrganizerEvents", fields: [organizerId], references: [id])
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
 
-  organizer    User          @relation("OrganizerEvents", fields: [organizerId], references: [id])
   reservations Reservation[]
+  gateUsers    User[]         @relation("GateEvents")
 }
 
 enum EventStatus {
@@ -50,29 +61,29 @@ enum EventStatus {
 }
 
 model Reservation {
-  id        String            @id @default(uuid())
+  id        String   @id @default(uuid())
   userId    String
   eventId   String
   quantity  Int
-  status    String            @default("PENDING")
+  status    String   @default("PENDING")
   expiresAt DateTime
-  createdAt DateTime          @default(now())
-  updatedAt DateTime          @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  user    User      @relation(fields: [userId], references: [id])
-  event   Event     @relation(fields: [eventId], references: [id])
+  user    User     @relation(fields: [userId], references: [id])
+  event   Event    @relation(fields: [eventId], references: [id])
   payment Payment?
   tickets Ticket[]
 }
 
 model Payment {
-  id            String        @id @default(uuid())
-  reservationId String        @unique
+  id            String   @id @default(uuid())
+  reservationId String   @unique
   amount        Float
-  status        String        @default("PENDING")
+  status        String   @default("PENDING")
   method        String
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   reservation Reservation @relation(fields: [reservationId], references: [id])
 }

@@ -1,3 +1,4 @@
+// src/users/users.service.ts
 import {
   BadRequestException,
   ConflictException,
@@ -10,12 +11,13 @@ import { Prisma } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { CreateGateDto } from './dto/create-gate.dto';
 
 @Injectable()
 export class UsersService {
   private readonly logger = new Logger(UsersService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   async findAll(actorId?: string) {
     await this.requireStaff(actorId);
@@ -109,6 +111,62 @@ export class UsersService {
     return updated;
   }
 
+  async createGate(dto: CreateGateDto, organizerId?: string) {
+    if (!organizerId) {
+      throw new BadRequestException('Informe o header x-organizer-id');
+    }
+
+    const organizer = await this.prisma.user.findUnique({
+      where: { id: organizerId },
+      select: { id: true, role: true },
+    });
+
+    if (!organizer || organizer.role !== 'ORGANIZER') {
+      throw new ForbiddenException('Apenas organizadores podem criar portaria');
+    }
+
+    const existing = await this.prisma.user.findUnique({
+      where: { email: dto.email.toLowerCase().trim() },
+    });
+
+    if (existing) {
+      throw new ConflictException('Email ja cadastrado');
+    }
+
+    const passwordHash = await bcrypt.hash(dto.password, 12);
+
+    const gate = await this.prisma.user.create({
+      data: {
+        name: dto.name.trim(),
+        email: dto.email.toLowerCase().trim(),
+        passwordHash,
+        role: 'GATE',
+        createdById: organizerId,
+      },
+      select: this.publicUserSelect(),
+    });
+
+    // Associar portaria a eventos específicos
+    if (dto.eventIds?.length) {
+      // Verificar se os eventos pertencem ao organizador
+      const events = await this.prisma.event.findMany({
+        where: {
+          id: { in: dto.eventIds },
+          organizerId,
+        },
+        select: { id: true },
+      });
+    }
+
+    this.logger.log({
+      action: 'user.createGate',
+      gateId: gate.id,
+      organizerId,
+    });
+
+    return gate;
+  }
+
   async remove(id: string, actorId?: string) {
     const actor = await this.resolveActor(actorId);
 
@@ -186,6 +244,7 @@ export class UsersService {
       role: true,
       createdAt: true,
       updatedAt: true,
+      createdById: true, // Adicionar este campo se necessário
     } as const;
   }
 }

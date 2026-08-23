@@ -1,3 +1,4 @@
+// src/users/users.controller.ts
 import {
   Body,
   Controller,
@@ -7,15 +8,17 @@ import {
   Param,
   ParseUUIDPipe,
   Patch,
+  Post,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { CreateGateDto } from './dto/create-gate.dto';
 import { UsersService } from './users.service';
 
 @ApiTags('Users')
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(private readonly usersService: UsersService) { }
 
   @Get()
   @ApiOperation({ summary: 'Lista usuarios para perfis operacionais' })
@@ -27,6 +30,15 @@ export class UsersController {
   @ApiOperation({ summary: 'Retorna o usuario autenticado pelo header' })
   findMe(@Headers('x-user-id') actorId?: string) {
     return this.usersService.findMe(actorId);
+  }
+
+  @Post('gate')
+  @ApiOperation({ summary: 'Organizador cria usuario de portaria' })
+  createGate(
+    @Body() dto: CreateGateDto,
+    @Headers('x-organizer-id') organizerId?: string,
+  ) {
+    return this.usersService.createGate(dto, organizerId);
   }
 
   @Get(':id')

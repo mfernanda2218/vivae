@@ -38,7 +38,23 @@ function getOrganizerId(): string | undefined {
           return user.id;
         }
       } catch {
-        // Ignorar erro de parsing
+        return undefined;
+      }
+    }
+  }
+  return undefined;
+}
+
+function getUserId(): string | undefined {
+  if (typeof window !== 'undefined') {
+    const userData = localStorage.getItem('vivae_user');
+    if (userData) {
+      try {
+        const user = JSON.parse(userData);
+        if (user.id) {
+          return user.id;
+        }
+      } catch {
         return undefined;
       }
     }
@@ -48,10 +64,15 @@ function getOrganizerId(): string | undefined {
 
 async function apiFetch<T>(path: string, filters?: object): Promise<T> {
   const organizerId = getOrganizerId();
+  const userId = getUserId();
   const headers: Record<string, string> = { Accept: 'application/json' };
 
   if (organizerId) {
     headers['x-organizer-id'] = organizerId;
+  }
+
+  if (userId) {
+    headers['x-user-id'] = userId;
   }
 
   const response = await fetch(buildUrl(path, filters), {
@@ -68,6 +89,7 @@ async function apiFetch<T>(path: string, filters?: object): Promise<T> {
 
 async function apiMutation<T>(path: string, body?: object): Promise<T> {
   const organizerId = getOrganizerId();
+  const userId = getUserId();
   const headers: Record<string, string> = {
     Accept: 'application/json',
     'Content-Type': 'application/json',
@@ -75,6 +97,10 @@ async function apiMutation<T>(path: string, body?: object): Promise<T> {
 
   if (organizerId) {
     headers['x-organizer-id'] = organizerId;
+  }
+
+  if (userId) {
+    headers['x-user-id'] = userId;
   }
 
   const response = await fetch(buildUrl(path), {
@@ -94,6 +120,7 @@ async function apiMutation<T>(path: string, body?: object): Promise<T> {
 
 async function apiPost<T>(path: string, body?: object): Promise<T> {
   const organizerId = getOrganizerId();
+  const userId = getUserId();
   const headers: Record<string, string> = {
     Accept: 'application/json',
     'Content-Type': 'application/json',
@@ -101,6 +128,10 @@ async function apiPost<T>(path: string, body?: object): Promise<T> {
 
   if (organizerId) {
     headers['x-organizer-id'] = organizerId;
+  }
+
+  if (userId) {
+    headers['x-user-id'] = userId;
   }
 
   const response = await fetch(buildUrl(path), {
@@ -121,10 +152,15 @@ async function apiPost<T>(path: string, body?: object): Promise<T> {
 
 async function apiFetchNoStore<T>(path: string, filters?: object): Promise<T> {
   const organizerId = getOrganizerId();
+  const userId = getUserId();
   const headers: Record<string, string> = { Accept: 'application/json' };
 
   if (organizerId) {
     headers['x-organizer-id'] = organizerId;
+  }
+
+  if (userId) {
+    headers['x-user-id'] = userId;
   }
 
   const response = await fetch(buildUrl(path, filters), {
@@ -200,6 +236,35 @@ export async function login(data: LoginRequest): Promise<LoginResponse> {
   if (!response.ok) {
     const error = await response.json().catch(() => null);
     throw new Error(error?.message || 'Falha ao realizar login');
+  }
+
+  return response.json();
+}
+
+export async function createGateUser(data: {
+  name: string;
+  email: string;
+  password: string;
+  eventIds?: string[];
+}): Promise<RegisterResponse> {
+  const organizerId = getOrganizerId();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  if (organizerId) {
+    headers['x-organizer-id'] = organizerId;
+  }
+
+  const response = await fetch(`${API_URL}/users/gate`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => null);
+    throw new Error(error?.message || 'Falha ao criar portaria');
   }
 
   return response.json();

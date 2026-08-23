@@ -1,5 +1,7 @@
+// src/gate/gate.service.ts
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
@@ -32,9 +34,16 @@ const TICKET_STATUS = {
 export class GateService {
   private readonly logger = new Logger(GateService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   async validate(dto: GateActionDto, userId?: string) {
+    // Verificar se usuário é portaria válida
+    const gate = await this.verifyGateAccess(userId, dto.eventId);
+
+    if (gate === null) {
+      throw new ForbiddenException('Acesso negado');
+    }
+
     const ticket = await this.findTicket(dto.identifier);
 
     if (!ticket) {
@@ -63,7 +72,7 @@ export class GateService {
 
       return current
         ? this.checkTicketStatus(current, dto.eventId) ||
-            this.invalid('INVALID', 'Ingresso nao pode ser validado')
+        this.invalid('INVALID', 'Ingresso nao pode ser validado')
         : this.invalid('INVALID', 'Ingresso nao encontrado');
     }
 
@@ -76,6 +85,7 @@ export class GateService {
       ticketId: ticket.id,
       eventId: validated.reservation.eventId,
       userId: userId || 'gate',
+      gateId: gate?.id || 'unknown',
     });
 
     return {
@@ -87,6 +97,13 @@ export class GateService {
   }
 
   async cancel(dto: GateActionDto, userId?: string) {
+    // Verificar se usuário é portaria válida
+    const gate = await this.verifyGateAccess(userId, dto.eventId);
+
+    if (gate === null) {
+      throw new ForbiddenException('Acesso negado');
+    }
+
     const ticket = await this.findTicket(dto.identifier);
 
     if (!ticket) {
@@ -143,6 +160,7 @@ export class GateService {
       ticketId: ticket.id,
       eventId: cancelled.reservation.eventId,
       userId: userId || 'gate',
+      gateId: gate?.id || 'unknown',
     });
 
     return {
@@ -246,6 +264,60 @@ export class GateService {
         };
       }),
     };
+  }
+
+  private async verifyGateAccess(userId?: string, eventId?: string) {
+    if (!userId) {
+      return null;
+    }
+
+    const gate = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        gateEvents: {
+          select: {
+            id: true,
+          },
+        },
+      },
+    });
+
+    if (!gate || gate.role !== 'GATE') {
+      return null;
+    }
+
+    // Se a portaria não tem eventos associados,
+    // ela pode validar todos os eventos do organizador que a criou
+    if (gate.gateEvents.length === 0) {
+      const organizerEvents = await this.prisma.event.findMany({
+        where: {
+          organizerId: gate.createdById || '',
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      if (organizerEvents.length > 0) {
+        return gate;
+      }
+
+      return null;
+    }
+
+    // Se a portaria tem eventos associados,
+    // verificar se o evento está na lista
+    if (eventId) {
+      const hasAccess = gate.gateEvents.some(
+        (gateEvent) => gateEvent.id === eventId,
+      );
+
+      if (!hasAccess) {
+        return null;
+      }
+    }
+
+    return gate;
   }
 
   private checkTicketStatus(ticket: GateTicket, expectedEventId?: string) {

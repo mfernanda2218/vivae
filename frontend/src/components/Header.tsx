@@ -2,44 +2,33 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { LogOut } from "lucide-react";
 import { SearchBar } from "./SearchBar";
 
 export function Header() {
   const pathname = usePathname();
-  const router = useRouter();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState<{ name: string; role: string } | null>(null);
 
   useEffect(() => {
-    // Verificar autenticação ao carregar e quando mudar de rota
-    const checkAuth = () => {
-      const token = localStorage.getItem("vivae_token");
-      const userData = localStorage.getItem("vivae_user");
+    const token = localStorage.getItem("vivae_token");
+    const userData = localStorage.getItem("vivae_user");
 
-      if (token && userData) {
-        try {
-          const parsedUser = JSON.parse(userData);
-          setIsAuthenticated(true);
-          setUser(parsedUser);
-        } catch {
-          setIsAuthenticated(false);
-          setUser(null);
-        }
-      } else {
+    if (token && userData) {
+      try {
+        const parsedUser = JSON.parse(userData);
+        setIsAuthenticated(true);
+        setUser(parsedUser);
+      } catch {
         setIsAuthenticated(false);
         setUser(null);
       }
-    };
-
-    checkAuth();
-
-    // Adicionar listener para quando o localStorage mudar
-    window.addEventListener("storage", checkAuth);
-
-    return () => window.removeEventListener("storage", checkAuth);
+    } else {
+      setIsAuthenticated(false);
+      setUser(null);
+    }
   }, [pathname]);
 
   const handleLogout = () => {
@@ -47,8 +36,7 @@ export function Header() {
     localStorage.removeItem("vivae_user");
     setIsAuthenticated(false);
     setUser(null);
-    router.push("/");
-    router.refresh();
+    window.location.href = "/";
   };
 
   const getNavLinks = () => {
@@ -64,6 +52,7 @@ export function Header() {
 
     if (user?.role === "ORGANIZER") {
       links.push({ href: "/dashboard", label: "Dashboard" });
+      links.push({ href: "/portaria", label: "Portaria" });
     }
 
     if (user?.role === "GATE") {
@@ -95,19 +84,14 @@ export function Header() {
             ))}
 
             {isAuthenticated && user ? (
-              <div className="flex items-center gap-2 border-l border-surface-2 pl-3">
-                <span className="hidden text-sm text-muted-foreground sm:inline">
-                  Olá, <strong className="text-text">{user.name}</strong>
-                </span>
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="flex items-center gap-1 rounded-md border border-surface-2 px-2 py-1.5 text-sm font-bold text-muted-foreground transition-colors hover:bg-surface-2 hover:text-text"
-                >
-                  <LogOut className="h-3.5 w-3.5" />
-                  Sair
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="flex items-center gap-1 rounded-md border border-surface-2 px-2 py-1.5 text-sm font-bold text-muted-foreground transition-colors hover:bg-surface-2 hover:text-text"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                Sair
+              </button>
             ) : (
               <Link href="/login" className="rounded-md bg-accent px-3 py-2 text-sm font-bold text-background transition-all duration-200 hover:-translate-y-0.5 hover:bg-accent/90 sm:px-4">
                 Entrar

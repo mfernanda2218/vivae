@@ -9,6 +9,6 @@ export const roleHome: Record<Role, string> = {
 
 export const roleRoutes: Record<Role, string[]> = {
     CUSTOMER: ["/eventos", "/meus-ingressos", "/checkout", "/checkout/sucesso", "/checkout/erro"],
-    ORGANIZER: ["/dashboard", "/eventos"],
+    ORGANIZER: ["/dashboard", "/eventos", "/portaria"],
     GATE: ["/portaria", "/eventos"],
 };
