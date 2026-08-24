@@ -76,7 +76,7 @@ async function apiFetch<T>(path: string, filters?: object): Promise<T> {
   }
 
   const response = await fetch(buildUrl(path, filters), {
-    headers,
+    headers: { Accept: 'application/json' },
     next: { revalidate: 30 },
   });
 

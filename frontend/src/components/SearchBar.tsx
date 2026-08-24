@@ -1,7 +1,8 @@
+// components/SearchBar.tsx
 "use client";
 
 import { Search } from "lucide-react";
-import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 export function SearchBar() {
@@ -9,51 +10,24 @@ export function SearchBar() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [value, setValue] = useState(searchParams.get("search") || "");
-  const didMount = useRef(false);
 
-  const updateSearch = useCallback(
-    (nextValue: string) => {
-      const params = new URLSearchParams(searchParams.toString());
-
-      if (nextValue.trim()) {
-        params.set("search", nextValue.trim());
-      } else {
-        params.delete("search");
-      }
-
-      const targetPath = pathname === "/" || pathname.startsWith("/eventos") ? pathname : "/eventos";
-      const query = params.toString();
-      const nextUrl = query ? `${targetPath}?${query}` : targetPath;
-      const currentQuery = searchParams.toString();
-      const currentUrl = currentQuery ? `${pathname}?${currentQuery}` : pathname;
-
-      if (nextUrl !== currentUrl) {
-        router.replace(nextUrl);
-      }
-    },
-    [pathname, router, searchParams],
-  );
-
-  useEffect(() => {
-    if (!didMount.current) {
-      didMount.current = true;
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      updateSearch(value);
-    }, 400);
-
-    return () => window.clearTimeout(timer);
-  }, [updateSearch, value]);
-
-  function onSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    updateSearch(value);
+
+    // Navegar para /eventos com o termo
+    const params = new URLSearchParams();
+    if (value.trim()) params.set("search", value.trim());
+
+    router.push(`/eventos?${params.toString()}`);
   }
 
+  // Sincronizar quando o usuário navega
+  useEffect(() => {
+    setValue(searchParams.get("search") || "");
+  }, [searchParams]);
+
   return (
-    <form onSubmit={onSubmit} className="relative w-full">
+    <form onSubmit={handleSubmit} className="relative w-full">
       <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
       <input
         value={value}
