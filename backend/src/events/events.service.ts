@@ -314,22 +314,20 @@ export class EventsService {
     const rows = (event as any).rows || 0;
     const seatsPerRow = (event as any).seatsPerRow || 0;
 
-    // Get all taken seats
-    const takenSeats = await this.prisma.ticket.findMany({
-      where: {
-        reservation: { eventId },
-        status: { not: 'CANCELLED' },
-        seatRow: { not: null },
-        seatNumber: { not: null },
-      } as any,
-      select: {
-        seatRow: true,
-        seatNumber: true,
-      },
-    });
+    // Get all taken seats using raw query to avoid Prisma Client type issues
+    const takenSeats = await this.prisma.$queryRaw<Array<{ seat_row: string; seat_number: string }>>`
+      SELECT seat_row, seat_number
+      FROM "Ticket"
+      WHERE "reservationId" IN (
+        SELECT id FROM "Reservation" WHERE "eventId" = ${eventId}
+      )
+      AND status != 'CANCELLED'
+      AND seat_row IS NOT NULL
+      AND seat_number IS NOT NULL
+    `;
 
     const takenSeatSet = new Set(
-      takenSeats.map((t: any) => `${t.seatRow}-${t.seatNumber}`),
+      takenSeats.map((t) => `${t.seat_row}-${t.seat_number}`),
     );
 
     // Generate all possible seats and mark availability

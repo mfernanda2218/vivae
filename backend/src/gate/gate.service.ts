@@ -305,25 +305,26 @@ export class GateService {
 
     const gate = await this.prisma.user.findUnique({
       where: { id: userId },
-      include: {
-        gateEvents: {
-          select: {
-            id: true,
-          },
-        },
-      },
     });
 
     if (!gate || gate.role !== 'GATE') {
       return null;
     }
 
+    // Get gate events using raw query to avoid Prisma Client type issues
+    const gateEvents = await this.prisma.$queryRaw<Array<{ id: string }>>`
+      SELECT e.id 
+      FROM "Event" e
+      JOIN "_GateEvents" ge ON e.id = ge."B"
+      WHERE ge."A" = ${userId}
+    `;
+
     // Se a portaria não tem eventos associados,
     // ela pode validar todos os eventos do organizador que a criou
-    if (gate.gateEvents.length === 0) {
+    if (gateEvents.length === 0) {
       const organizerEvents = await this.prisma.event.findMany({
         where: {
-          organizerId: gate.createdById || '',
+          organizerId: (gate as any).createdById || '',
         },
         select: {
           id: true,
@@ -340,7 +341,7 @@ export class GateService {
     // Se a portaria tem eventos associados,
     // verificar se o evento está na lista
     if (eventId) {
-      const hasAccess = gate.gateEvents.some(
+      const hasAccess = gateEvents.some(
         (gateEvent) => gateEvent.id === eventId,
       );
 

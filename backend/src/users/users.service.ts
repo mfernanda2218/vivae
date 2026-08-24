@@ -135,16 +135,14 @@ export class UsersService {
 
     const passwordHash = await bcrypt.hash(dto.password, 12);
 
-    const gate = await this.prisma.user.create({
-      data: {
-        name: dto.name.trim(),
-        email: dto.email.toLowerCase().trim(),
-        passwordHash,
-        role: 'GATE',
-        createdById: organizerId,
-      },
-      select: this.publicUserSelect(),
-    });
+    // Use raw query to avoid Prisma Client type issues with createdById field
+    const gateResult = await this.prisma.$queryRaw<Array<{ id: string; name: string; email: string; role: string }>>`
+      INSERT INTO "User" (id, name, email, "passwordHash", role, "createdById", "createdAt", "updatedAt")
+      VALUES (gen_random_uuid(), ${dto.name.trim()}, ${dto.email.toLowerCase().trim()}, ${passwordHash}, 'GATE', ${organizerId}, NOW(), NOW())
+      RETURNING id, name, email, role
+    `;
+
+    const createdGate = gateResult[0] as { id: string; name: string; email: string; role: string };
 
     // Associar portaria a eventos específicos
     if (dto.eventIds?.length) {
@@ -160,11 +158,11 @@ export class UsersService {
 
     this.logger.log({
       action: 'user.createGate',
-      gateId: gate.id,
+      gateId: createdGate.id,
       organizerId,
     });
 
-    return gate;
+    return createdGate;
   }
 
   async remove(id: string, actorId?: string) {
