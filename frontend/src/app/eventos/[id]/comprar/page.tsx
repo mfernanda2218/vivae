@@ -1,8 +1,13 @@
 // app/eventos/[id]/comprar/page.tsx
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { Loader2 } from "lucide-react";
 import { CheckoutClient } from "@/app/checkout/CheckoutClient";
 import { getEvent } from "@/lib/api";
+import type { Event } from "@/types/event";
 
 export const dynamic = "force-dynamic";
 
@@ -10,12 +15,65 @@ type PageProps = {
   params: Promise<{ id: string }>;
 };
 
-export default async function BuyEventPage({ params }: PageProps) {
-  const { id } = await params;
-  const event = await getEvent(id);
+export default function BuyEventPage({ params }: PageProps) {
+  const router = useRouter();
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [eventId, setEventId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const token = localStorage.getItem("vivae_token");
+    const userData = localStorage.getItem("vivae_user");
+    const authenticated = !!(token && userData);
+    
+    setIsAuthenticated(authenticated);
+
+    if (!authenticated) {
+      params.then((p) => {
+        router.push(`/login?redirect=/eventos/${p.id}/comprar`);
+      });
+    } else {
+      params.then((p) => {
+        setEventId(p.id);
+      });
+    }
+  }, [router, params]);
+
+  if (isAuthenticated === null || !eventId) {
+    return (
+      <div className="flex min-h-[400px] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-accent" />
+      </div>
+    );
+  }
+
+  return <BuyEventPageContent eventId={eventId} />;
+}
+
+function BuyEventPageContent({ eventId }: { eventId: string }) {
+  const [event, setEvent] = useState<Event | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getEvent(eventId).then((data) => {
+      setEvent(data);
+      setLoading(false);
+    });
+  }, [eventId]);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-[400px] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-accent" />
+      </div>
+    );
+  }
 
   if (!event) {
-    notFound();
+    return (
+      <div className="flex min-h-[400px] items-center justify-center">
+        <p className="text-muted-foreground">Evento não encontrado</p>
+      </div>
+    );
   }
 
   return (
