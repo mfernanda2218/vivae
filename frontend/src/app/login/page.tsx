@@ -39,9 +39,14 @@ export default function LoginPage() {
                 variant: "success",
             });
 
-            // Redirecionar baseado no role
+            // Redirecionar baseado no role, ou para a página de compra se veio de lá
             const userRole = response.user.role as Role;
-            const destination = redirectTo || roleHome[userRole] || "/eventos";
+            let destination = redirectTo || roleHome[userRole] || "/eventos";
+
+            // Se o usuário não tem permissão para a rota de compra, redirecionar para a área correta
+            if (redirectTo && !redirectTo.startsWith("/eventos/")) {
+                destination = redirectTo;
+            }
 
             // Usar window.location para forçar navegação completa
             window.location.href = destination;

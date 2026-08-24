@@ -1,4 +1,7 @@
 // app/eventos/[id]/page.tsx
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CalendarDays, MapPin, Ticket, UserRound } from "lucide-react";
@@ -100,6 +103,28 @@ function PurchaseBox({
     event: NonNullable<Awaited<ReturnType<typeof getEvent>>>;
     compact?: boolean;
 }) {
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+    useEffect(() => {
+        const token = localStorage.getItem("vivae_token");
+        const userData = localStorage.getItem("vivae_user");
+
+        if (token && userData) {
+            try {
+                const parsedUser = JSON.parse(userData);
+                setIsAuthenticated(true);
+            } catch {
+                setIsAuthenticated(false);
+            }
+        } else {
+            setIsAuthenticated(false);
+        }
+    }, []);
+
+    const href = isAuthenticated
+        ? `/eventos/${event.id}/comprar`
+        : "/login?redirect=/eventos/" + event.id + "/comprar";
+
     return (
         <div className={compact ? "flex items-center justify-between gap-4" : "flex flex-col gap-5"}>
             <div className="flex flex-col gap-2">
@@ -119,10 +144,10 @@ function PurchaseBox({
                 )}
             </div>
             <Link
-                href={`/eventos/${event.id}/comprar`}
+                href={href}
                 className="rounded-md bg-accent px-5 py-3 text-center text-sm font-bold text-background transition-colors hover:bg-accent/90"
             >
-                Comprar ingresso
+                {isAuthenticated ? "Comprar ingresso" : "Entrar para comprar"}
             </Link>
         </div>
     );
