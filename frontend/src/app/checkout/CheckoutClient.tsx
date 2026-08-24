@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { CheckCircle2, CreditCard, Loader2, Minus, Plus, XCircle } from "lucide-react";
 import { createReservation, processPayment } from "@/lib/api";
 import { useToast } from "@/components/ToastProvider";
+import { SeatMap } from "@/components/SeatMap";
 import type { Event } from "@/types/event";
 
 function formatCurrency(value: number) {
@@ -18,9 +19,11 @@ export function CheckoutClient({ event }: { event: Event }) {
     const router = useRouter();
     const { showToast } = useToast();
     const [quantity, setQuantity] = useState(1);
+    const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState("");
 
+    const isSeated = event.seatType === "SEATED";
     const maxQuantity = Math.min(event.availableTickets, 10);
     const total = useMemo(() => event.price * quantity, [event.price, quantity]);
     const soldOut = maxQuantity <= 0;
@@ -35,7 +38,11 @@ export function CheckoutClient({ event }: { event: Event }) {
                 description: "Estamos separando seus ingressos.",
             });
 
-            const reservation = await createReservation({ eventId: event.id, quantity });
+            const reservation = await createReservation({ 
+                eventId: event.id, 
+                quantity,
+                seats: isSeated ? selectedSeats : undefined,
+            });
             const payment = await processPayment({
                 reservationId: reservation.id,
                 outcome,
@@ -71,6 +78,11 @@ export function CheckoutClient({ event }: { event: Event }) {
         }
     }
 
+    function handleSeatsChange(seats: string[]) {
+        setSelectedSeats(seats);
+        setQuantity(seats.length);
+    }
+
     return (
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
             <section className="flex min-w-0 flex-col gap-5 rounded-lg border border-surface-2 bg-surface p-5">
@@ -91,38 +103,60 @@ export function CheckoutClient({ event }: { event: Event }) {
                         )}
                     </div>
                     <div className="flex flex-col justify-between gap-4 rounded-md bg-background p-4">
-                        <div>
-                            <h2 className="text-lg font-bold text-text">Quantidade</h2>
-                            <p className="text-sm text-muted-foreground">
-                                {event.availableTickets} ingresso{event.availableTickets === 1 ? "" : "s"} disponivel
-                                {event.availableTickets === 1 ? "" : "is"}
-                            </p>
-                        </div>
-                        <div className="flex h-12 w-fit items-center rounded-md border border-surface-2 bg-surface">
-                            <button
-                                type="button"
-                                aria-label="Diminuir quantidade"
-                                disabled={quantity <= 1 || soldOut || isSubmitting}
-                                onClick={() => setQuantity((current) => Math.max(1, current - 1))}
-                                className="flex h-12 w-12 items-center justify-center text-muted-foreground transition-colors hover:text-text disabled:opacity-40"
-                            >
-                                <Minus className="h-4 w-4" />
-                            </button>
-                            <span className="flex h-12 w-12 items-center justify-center text-base font-black text-text">
-                                {soldOut ? 0 : quantity}
-                            </span>
-                            <button
-                                type="button"
-                                aria-label="Aumentar quantidade"
-                                disabled={quantity >= maxQuantity || soldOut || isSubmitting}
-                                onClick={() => setQuantity((current) => Math.min(maxQuantity, current + 1))}
-                                className="flex h-12 w-12 items-center justify-center text-muted-foreground transition-colors hover:text-text disabled:opacity-40"
-                            >
-                                <Plus className="h-4 w-4" />
-                            </button>
-                        </div>
+                        {isSeated ? (
+                            <div>
+                                <h2 className="text-lg font-bold text-text">Selecione os assentos</h2>
+                                <p className="text-sm text-muted-foreground">
+                                    Escolha até {maxQuantity} assentos no mapa abaixo
+                                </p>
+                            </div>
+                        ) : (
+                            <div>
+                                <h2 className="text-lg font-bold text-text">Quantidade</h2>
+                                <p className="text-sm text-muted-foreground">
+                                    {event.availableTickets} ingresso{event.availableTickets === 1 ? "" : "s"} disponivel
+                                    {event.availableTickets === 1 ? "" : "is"}
+                                </p>
+                            </div>
+                        )}
+                        {!isSeated && (
+                            <div className="flex h-12 w-fit items-center rounded-md border border-surface-2 bg-surface">
+                                <button
+                                    type="button"
+                                    aria-label="Diminuir quantidade"
+                                    disabled={quantity <= 1 || soldOut || isSubmitting}
+                                    onClick={() => setQuantity((current) => Math.max(1, current - 1))}
+                                    className="flex h-12 w-12 items-center justify-center text-muted-foreground transition-colors hover:text-text disabled:opacity-40"
+                                >
+                                    <Minus className="h-4 w-4" />
+                                </button>
+                                <span className="flex h-12 w-12 items-center justify-center text-base font-black text-text">
+                                    {soldOut ? 0 : quantity}
+                                </span>
+                                <button
+                                    type="button"
+                                    aria-label="Aumentar quantidade"
+                                    disabled={quantity >= maxQuantity || soldOut || isSubmitting}
+                                    onClick={() => setQuantity((current) => Math.min(maxQuantity, current + 1))}
+                                    className="flex h-12 w-12 items-center justify-center text-muted-foreground transition-colors hover:text-text disabled:opacity-40"
+                                >
+                                    <Plus className="h-4 w-4" />
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
+
+                {isSeated && (
+                    <div className="rounded-md border border-surface-2 bg-surface p-4">
+                        <SeatMap
+                            eventId={event.id}
+                            onSeatsChange={handleSeatsChange}
+                            maxSelection={maxQuantity}
+                            disabled={isSubmitting}
+                        />
+                    </div>
+                )}
             </section>
 
             <aside className="h-fit rounded-lg border border-surface-2 bg-surface p-5 lg:sticky lg:top-28">
@@ -168,7 +202,7 @@ export function CheckoutClient({ event }: { event: Event }) {
                     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
                         <button
                             type="button"
-                            disabled={soldOut || isSubmitting}
+                            disabled={soldOut || isSubmitting || (isSeated && selectedSeats.length === 0)}
                             onClick={() => submitPayment("APPROVED")}
                             className="flex h-11 items-center justify-center gap-2 rounded-md bg-accent px-4 text-sm font-black text-background transition-all duration-200 hover:-translate-y-0.5 hover:bg-accent/90 disabled:translate-y-0 disabled:opacity-50"
                         >
@@ -177,7 +211,7 @@ export function CheckoutClient({ event }: { event: Event }) {
                         </button>
                         <button
                             type="button"
-                            disabled={soldOut || isSubmitting}
+                            disabled={soldOut || isSubmitting || (isSeated && selectedSeats.length === 0)}
                             onClick={() => submitPayment("DECLINED")}
                             className="flex h-11 items-center justify-center gap-2 rounded-md border border-error/50 px-4 text-sm font-bold text-error transition-colors hover:bg-error/10 disabled:opacity-50"
                         >
