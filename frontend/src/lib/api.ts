@@ -273,6 +273,7 @@ export async function createGateUser(data: {
 export async function createReservation(input: {
   eventId: string;
   quantity: number;
+  seats?: string[];
 }): Promise<Reservation> {
   return apiMutation<Reservation>('/reservations', input);
 }
