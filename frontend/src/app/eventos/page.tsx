@@ -33,11 +33,6 @@ export default async function EventsPage({ searchParams }: PageProps) {
     limit: 16,
   };
 
-  // Verificar se o usuário é organizador e filtrar apenas seus eventos
-  const isOrganizer = typeof window !== 'undefined' &&
-    localStorage.getItem('vivae_user') &&
-    JSON.parse(localStorage.getItem('vivae_user') || '{}').role === 'ORGANIZER';
-
   const response = await getEvents(filters);
 
   return (
@@ -49,8 +44,7 @@ export default async function EventsPage({ searchParams }: PageProps) {
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-black text-text">Eventos</h1>
           <p className="text-sm text-muted-foreground">
-            {response.meta.total} evento{response.meta.total === 1 ? "" : "s"} encontrado
-            {response.meta.total === 1 ? "" : "s"}
+            {response.meta.total} evento{response.meta.total === 1 ? "" : "s"} encontrado{response.meta.total === 1 ? "" : "s"}
           </p>
         </div>
         <EventsGrid events={response.data} />
