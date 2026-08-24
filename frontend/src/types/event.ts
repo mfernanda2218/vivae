@@ -18,6 +18,9 @@ export interface Event {
   availableTickets: number;
   price: number;
   status: EventStatus;
+  seatType?: string;
+  rows?: number;
+  seatsPerRow?: number;
   organizer?: EventOrganizer;
 }
 
@@ -150,7 +153,11 @@ export interface GateDashboard {
     used: number;
     cancelled: number;
     checkinsToday: number;
+    checkinsWeek: number;
     availableTickets: number;
+    totalRevenue: number;
+    totalCapacity: number;
+    conversionRate: number;
   };
   events: Array<{
     id: string;
@@ -162,5 +169,7 @@ export interface GateDashboard {
     soldTickets: number;
     usedTickets: number;
     cancelledTickets: number;
+    revenue: number;
+    conversionRate: number;
   }>;
 }

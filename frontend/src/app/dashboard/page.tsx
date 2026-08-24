@@ -8,10 +8,12 @@ import {
   Activity,
   CalendarDays,
   CheckCircle2,
+  DollarSign,
   PackageOpen,
   Plus,
   Ticket,
   TicketX,
+  TrendingUp,
   Users,
   XCircle,
 } from "lucide-react";
@@ -31,6 +33,13 @@ function formatDate(value: string) {
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(value));
+}
+
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(value);
 }
 
 export default function DashboardPage() {
@@ -149,7 +158,9 @@ export default function DashboardPage() {
     { label: "Ativos", value: dashboard.totals.active, icon: Ticket },
     { label: "Validados", value: dashboard.totals.used, icon: CheckCircle2 },
     { label: "Hoje", value: dashboard.totals.checkinsToday, icon: Activity },
-    { label: "Cancelados", value: dashboard.totals.cancelled, icon: XCircle },
+    { label: "Semana", value: dashboard.totals.checkinsWeek, icon: TrendingUp },
+    { label: "Receita", value: formatCurrency(dashboard.totals.totalRevenue), icon: DollarSign },
+    { label: "Conversão", value: `${dashboard.totals.conversionRate}%`, icon: TrendingUp },
   ];
 
   return (
@@ -275,7 +286,7 @@ export default function DashboardPage() {
           </div>
         )}
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
           {cards.map((card) => {
             const Icon = card.icon;
             return (
@@ -335,6 +346,12 @@ export default function DashboardPage() {
                         <span className="text-muted-foreground">
                           Estoque{" "}
                           <strong className="block text-text">{event.availableTickets}</strong>
+                        </span>
+                        <span className="text-muted-foreground">
+                          Receita <strong className="block text-text">{formatCurrency(event.revenue)}</strong>
+                        </span>
+                        <span className="text-muted-foreground">
+                          Conversão <strong className="block text-text">{event.conversionRate}%</strong>
                         </span>
                       </div>
                       <div className="flex flex-col gap-2">
