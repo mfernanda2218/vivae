@@ -68,4 +68,9 @@ export class EventsFilterDto {
   @Min(1)
   @Max(50)
   limit?: number;
+
+  @ApiPropertyOptional({ description: 'Ordenacao: date, date-asc, price-asc, price-desc, title' })
+  @IsOptional()
+  @IsString()
+  sortBy?: string;
 }
