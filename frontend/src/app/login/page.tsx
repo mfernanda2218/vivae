@@ -170,15 +170,15 @@ export default function LoginPage() {
                     <div className="mt-3 grid gap-2 text-xs text-muted-foreground">
                         <div className="flex items-center justify-between rounded-md bg-background px-3 py-2">
                             <span>Cliente</span>
-                            <code className="text-accent">cliente@vivae.app</code>
+                            <code className="text-accent">cliente1@vivae.com</code>
                         </div>
                         <div className="flex items-center justify-between rounded-md bg-background px-3 py-2">
                             <span>Organizador</span>
-                            <code className="text-accent">organizador@vivae.app</code>
+                            <code className="text-accent">organizer@vivae.com</code>
                         </div>
                         <div className="flex items-center justify-between rounded-md bg-background px-3 py-2">
                             <span>Portaria</span>
-                            <code className="text-accent">portaria@vivae.app</code>
+                            <code className="text-accent">portaria@vivae.com</code>
                         </div>
                     </div>
                     <p className="mt-3 text-xs text-muted-foreground/80">
