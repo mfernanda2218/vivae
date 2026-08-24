@@ -182,8 +182,10 @@ export class GateService {
     };
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const weekAgo = new Date(today);
+    weekAgo.setDate(weekAgo.getDate() - 7);
 
-    const [events, ticketGroups, checkinsToday, reservations] =
+    const [events, ticketGroups, checkinsToday, checkinsWeek, reservations, payments] =
       await Promise.all([
         this.prisma.event.findMany({
           where: eventWhere,
@@ -209,11 +211,26 @@ export class GateService {
             validatedAt: { gte: today },
           },
         }),
+        this.prisma.ticket.count({
+          where: {
+            ...ticketWhere,
+            status: TICKET_STATUS.USED,
+            validatedAt: { gte: weekAgo },
+          },
+        }),
         this.prisma.reservation.count({
           where: {
             event: eventWhere,
             status: RESERVATION_STATUS.CONFIRMED,
           },
+        }),
+        this.prisma.payment.aggregate({
+          where: {
+            reservation: { event: eventWhere },
+            status: 'APPROVED',
+          },
+          _sum: { amount: true },
+          _count: { _all: true },
         }),
       ]);
 
@@ -222,23 +239,29 @@ export class GateService {
       {},
     );
 
+    const totalRevenue = payments._sum.amount || 0;
+    const totalCapacity = events.reduce((sum, event) => sum + event.capacity, 0);
+    const totalSold = Object.values(ticketsByStatus).reduce((sum, count) => sum + count, 0);
+    const conversionRate = totalCapacity > 0 ? Math.round((totalSold / totalCapacity) * 100) : 0;
+
     return {
       organizerId: currentOrganizerId,
       totals: {
         events: events.length,
         reservations,
-        tickets: Object.values(ticketsByStatus).reduce(
-          (sum, count) => sum + count,
-          0,
-        ),
+        tickets: totalSold,
         active: ticketsByStatus.ACTIVE || 0,
         used: ticketsByStatus.USED || 0,
         cancelled: ticketsByStatus.CANCELLED || 0,
         checkinsToday,
+        checkinsWeek,
         availableTickets: events.reduce(
           (sum, event) => sum + event.availableTickets,
           0,
         ),
+        totalRevenue,
+        totalCapacity,
+        conversionRate,
       },
       events: events.map((event) => {
         const statuses = event.reservations
@@ -251,6 +274,13 @@ export class GateService {
             {},
           );
 
+        const eventRevenue = event.reservations
+          .filter((r) => r.payment?.status === 'APPROVED')
+          .reduce((sum, r) => sum + (r.payment?.amount || 0), 0);
+
+        const eventSold = (statuses.ACTIVE || 0) + (statuses.USED || 0);
+        const eventConversion = event.capacity > 0 ? Math.round((eventSold / event.capacity) * 100) : 0;
+
         return {
           id: event.id,
           title: event.title,
@@ -258,9 +288,11 @@ export class GateService {
           status: event.status,
           capacity: event.capacity,
           availableTickets: event.availableTickets,
-          soldTickets: (statuses.ACTIVE || 0) + (statuses.USED || 0),
+          soldTickets: eventSold,
           usedTickets: statuses.USED || 0,
           cancelledTickets: statuses.CANCELLED || 0,
+          revenue: eventRevenue,
+          conversionRate: eventConversion,
         };
       }),
     };
