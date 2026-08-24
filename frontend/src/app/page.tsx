@@ -1,3 +1,4 @@
+// app/page.tsx
 import { Categories } from "@/components/Categories";
 import { EventsGrid } from "@/components/EventsGrid";
 import { Hero } from "@/components/Hero";

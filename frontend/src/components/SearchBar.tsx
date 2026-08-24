@@ -7,18 +7,22 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 export function SearchBar() {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const [value, setValue] = useState(searchParams.get("search") || "");
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
+    // Navegar para /eventos com o termo
     const params = new URLSearchParams();
     if (value.trim()) params.set("search", value.trim());
 
     router.push(`/eventos?${params.toString()}`);
+    router.refresh();
   }
 
+  // Sincronizar quando o usuário navega
   useEffect(() => {
     setValue(searchParams.get("search") || "");
   }, [searchParams]);
