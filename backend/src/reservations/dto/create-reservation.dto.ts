@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsInt, IsUUID, Max, Min } from 'class-validator';
+import { IsArray, IsInt, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
 
 export class CreateReservationDto {
   @ApiProperty({ description: 'ID do evento publicado' })
@@ -17,4 +17,14 @@ export class CreateReservationDto {
   @Min(1)
   @Max(10)
   quantity: number;
+
+  @ApiProperty({
+    description: 'Seleção de assentos (para eventos com mapa)',
+    required: false,
+    type: [String],
+  })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  seats?: string[];
 }

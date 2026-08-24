@@ -37,9 +37,10 @@ export class EventsService {
       : { status: EVENT_STATUS.PUBLISHED }; // Cliente vê apenas eventos publicados
 
     if (filters.search) {
+      const searchLower = filters.search.toLowerCase();
       where.OR = [
-        { title: { contains: filters.search } },
-        { description: { contains: filters.search } },
+        { title: { contains: searchLower, mode: 'insensitive' } },
+        { description: { contains: searchLower, mode: 'insensitive' } },
       ];
     }
 
@@ -65,12 +66,36 @@ export class EventsService {
       };
     }
 
+    // Handle sorting
+    let orderBy: Prisma.EventOrderByWithRelationInput = { date: 'asc' };
+    if (filters.sortBy) {
+      switch (filters.sortBy) {
+        case 'date':
+          orderBy = { date: 'asc' };
+          break;
+        case 'date-asc':
+          orderBy = { date: 'asc' };
+          break;
+        case 'price-asc':
+          orderBy = { price: 'asc' };
+          break;
+        case 'price-desc':
+          orderBy = { price: 'desc' };
+          break;
+        case 'title':
+          orderBy = { title: 'asc' };
+          break;
+        default:
+          orderBy = { date: 'asc' };
+      }
+    }
+
     const [events, total] = await Promise.all([
       this.prisma.event.findMany({
         where,
         skip,
         take: limit,
-        orderBy: { date: 'asc' },
+        orderBy,
         include: {
           organizer: { select: { id: true, name: true } },
         },
@@ -268,5 +293,63 @@ export class EventsService {
       where: { organizerId },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  async getAvailableSeats(eventId: string) {
+    const event = await this.prisma.event.findUnique({
+      where: { id: eventId },
+    });
+
+    if (!event) {
+      throw new NotFoundException('Evento não encontrado');
+    }
+
+    if ((event as any).seatType !== 'SEATED') {
+      return {
+        seatType: (event as any).seatType || 'GENERAL',
+        seats: [],
+      };
+    }
+
+    const rows = (event as any).rows || 0;
+    const seatsPerRow = (event as any).seatsPerRow || 0;
+
+    // Get all taken seats
+    const takenSeats = await this.prisma.ticket.findMany({
+      where: {
+        reservation: { eventId },
+        status: { not: 'CANCELLED' },
+        seatRow: { not: null },
+        seatNumber: { not: null },
+      } as any,
+      select: {
+        seatRow: true,
+        seatNumber: true,
+      },
+    });
+
+    const takenSeatSet = new Set(
+      takenSeats.map((t: any) => `${t.seatRow}-${t.seatNumber}`),
+    );
+
+    // Generate all possible seats and mark availability
+    const seats: any[] = [];
+    for (let row = 1; row <= rows; row++) {
+      for (let seat = 1; seat <= seatsPerRow; seat++) {
+        const seatId = `${row}-${seat}`;
+        seats.push({
+          row: row.toString(),
+          seat: seat.toString(),
+          available: !takenSeatSet.has(seatId),
+        });
+      }
+    }
+
+    return {
+      seatType: (event as any).seatType,
+      rows,
+      seatsPerRow,
+      seats,
+    };
   }
 }

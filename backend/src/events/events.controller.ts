@@ -83,6 +83,12 @@ export class EventsController {
     return this.eventsService.cancel(id, this.getOrganizerId(organizerId));
   }
 
+  @Get(':id/seats')
+  @ApiOperation({ summary: 'Lista assentos disponíveis para um evento' })
+  getAvailableSeats(@Param('id', ParseUUIDPipe) id: string) {
+    return this.eventsService.getAvailableSeats(id);
+  }
+
   private getOrganizerId(organizerId?: string) {
     if (!organizerId) {
       throw new BadRequestException('Informe o header x-organizer-id');

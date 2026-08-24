@@ -44,6 +44,9 @@ model Event {
   availableTickets Int
   price            Float
   status           EventStatus @default(DRAFT)
+  seatType         String      @default("GENERAL") // GENERAL, SEATED, MIXED
+  rows             Int         @default(0) // Number of rows for seated events
+  seatsPerRow      Int         @default(0) // Seats per row for seated events
   organizerId      String
   organizer        User        @relation("OrganizerEvents", fields: [organizerId], references: [id])
   createdAt        DateTime    @default(now())
@@ -95,6 +98,8 @@ model Ticket {
   qrToken       String?      @unique
   qrTokenHash   String
   status        String       @default("ACTIVE")
+  seatNumber    String?
+  seatRow       String?
   validatedAt   DateTime?
   validatedBy   String?
   createdAt     DateTime     @default(now())

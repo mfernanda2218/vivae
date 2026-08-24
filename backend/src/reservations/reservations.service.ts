@@ -7,6 +7,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { createHash } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateReservationDto } from './dto/create-reservation.dto';
 
@@ -34,6 +35,38 @@ export class ReservationsService {
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
     return this.prisma.$transaction(async (tx) => {
+      const event = await tx.event.findUnique({
+        where: { id: dto.eventId },
+      });
+
+      if (!event) {
+        throw new NotFoundException('Evento não encontrado');
+      }
+
+      // Validate seat selection for seated events
+      if ((event as any).seatType === 'SEATED' && (!dto.seats || dto.seats.length !== dto.quantity)) {
+        throw new BadRequestException('Para eventos com assentos numerados, selecione os assentos');
+      }
+
+      // Check if seats are already taken
+      if (dto.seats && dto.seats.length > 0) {
+        for (const seat of dto.seats) {
+          const [row, number] = seat.split('-');
+          const existingTicket = await tx.ticket.findFirst({
+            where: {
+              reservation: { eventId: dto.eventId },
+              status: { not: 'CANCELLED' },
+              seatRow: row,
+              seatNumber: number,
+            } as any,
+          });
+
+          if (existingTicket) {
+            throw new ConflictException(`Assento já ocupado: ${row}-${number}`);
+          }
+        }
+      }
+
       const stockUpdate = await tx.event.updateMany({
         where: {
           id: dto.eventId,
@@ -46,11 +79,6 @@ export class ReservationsService {
       });
 
       if (stockUpdate.count === 0) {
-        const event = await tx.event.findUnique({ where: { id: dto.eventId } });
-        if (!event) {
-          throw new NotFoundException('Evento não encontrado');
-        }
-
         throw new ConflictException(
           event.availableTickets > 0
             ? 'Quantidade solicitada indisponível'
@@ -58,11 +86,7 @@ export class ReservationsService {
         );
       }
 
-      const event = await tx.event.findUniqueOrThrow({
-        where: { id: dto.eventId },
-      });
-
-      if (event.availableTickets === 0) {
+      if (event.availableTickets === dto.quantity) {
         await tx.event.update({
           where: { id: dto.eventId },
           data: { status: EVENT_STATUS.SOLD_OUT },
@@ -85,15 +109,37 @@ export class ReservationsService {
         },
         include: this.reservationInclude(),
       });
+
+      // Create tickets with seat assignments
+      const tickets = await Promise.all(
+        Array.from({ length: dto.quantity }).map(async (_, index) => {
+          const seatAssignment = dto.seats?.[index]
+            ? dto.seats[index].split('-')
+            : null;
+
+          return tx.ticket.create({
+            data: {
+              reservationId: reservation.id,
+              code: this.generateTicketCode(),
+              qrToken: this.generateQrToken(),
+              qrTokenHash: this.hashToken(this.generateQrToken()),
+              seatRow: seatAssignment?.[0] || null,
+              seatNumber: seatAssignment?.[1] || null,
+            } as any,
+          });
+        }),
+      );
+
       this.logger.log({
         action: 'reservation.create',
         reservationId: reservation.id,
         eventId: dto.eventId,
         quantity: dto.quantity,
         userId: currentUserId,
+        seats: dto.seats,
       });
 
-      return reservation;
+      return { ...reservation, tickets };
     });
   }
 
@@ -240,5 +286,19 @@ export class ReservationsService {
     }
 
     return demoUser.id;
+  }
+
+  private generateTicketCode(): string {
+    const timestamp = Date.now().toString(36).toUpperCase();
+    const random = Math.random().toString(36).substring(2, 8).toUpperCase();
+    return `${timestamp}-${random}`;
+  }
+
+  private generateQrToken(): string {
+    return `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+  }
+
+  private hashToken(token: string): string {
+    return createHash('sha256').update(token).digest('hex');
   }
 }

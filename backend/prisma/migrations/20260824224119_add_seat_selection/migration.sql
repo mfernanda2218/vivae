@@ -1,0 +1,8 @@
+-- AlterTable
+ALTER TABLE "Event" ADD COLUMN     "rows" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "seatType" TEXT NOT NULL DEFAULT 'GENERAL',
+ADD COLUMN     "seatsPerRow" INTEGER NOT NULL DEFAULT 0;
+
+-- AlterTable
+ALTER TABLE "Ticket" ADD COLUMN     "seatNumber" TEXT,
+ADD COLUMN     "seatRow" TEXT;
