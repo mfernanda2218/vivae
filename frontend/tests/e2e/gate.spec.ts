@@ -1,7 +1,7 @@
 // e2e/gate.spec.ts
 import { test, expect, Page } from '@playwright/test';
 
-const portaria = { email: 'portaria@vivae.app', password: 'password123' };
+const portaria = { email: 'portaria@vivae.com', password: 'password123' };
 
 async function loginPortaria(page: Page) {
     await page.goto('/login');

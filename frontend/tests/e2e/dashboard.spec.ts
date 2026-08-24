@@ -1,7 +1,7 @@
 // e2e/dashboard.spec.ts
 import { test, expect, Page } from '@playwright/test';
 
-const organizador = { email: 'organizador@vivae.app', password: 'password123' };
+const organizador = { email: 'organizer@vivae.com', password: 'password123' };
 
 async function loginOrganizador(page: Page) {
     await page.goto('/login');

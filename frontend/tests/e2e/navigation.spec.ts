@@ -2,9 +2,9 @@
 import { test, expect, Page } from '@playwright/test';
 
 const demoAccounts = {
-    cliente: { email: 'cliente@vivae.app', password: 'password123' },
-    organizador: { email: 'organizador@vivae.app', password: 'password123' },
-    portaria: { email: 'portaria@vivae.app', password: 'password123' },
+    cliente: { email: 'cliente1@vivae.com', password: 'password123' },
+    organizador: { email: 'organizer@vivae.com', password: 'password123' },
+    portaria: { email: 'portaria@vivae.com', password: 'password123' },
 };
 
 async function login(page: Page, account: { email: string; password: string }) {

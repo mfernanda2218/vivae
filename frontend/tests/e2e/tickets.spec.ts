@@ -1,7 +1,7 @@
 // e2e/tickets.spec.ts
 import { test, expect, Page } from '@playwright/test';
 
-const cliente = { email: 'cliente@vivae.app', password: 'password123' };
+const cliente = { email: 'cliente1@vivae.com', password: 'password123' };
 
 async function loginCliente(page: Page) {
     await page.goto('/login');
