@@ -7,7 +7,7 @@ import Link from "next/link";
 import { Eye, EyeOff, Loader2, LogIn, Mail, ShieldCheck, User } from "lucide-react";
 import { login } from "@/lib/api";
 import { useToast } from "@/components/ToastProvider";
-import { roleHome, Role } from "@/lib/roles";
+import { roleHome, roleRoutes, Role } from "@/lib/roles";
 
 export default function LoginPage() {
     const router = useRouter();
@@ -43,9 +43,15 @@ export default function LoginPage() {
             const userRole = response.user.role as Role;
             let destination = redirectTo || roleHome[userRole] || "/eventos";
 
-            // Se o usuário não tem permissão para a rota de compra, redirecionar para a área correta
-            if (redirectTo && !redirectTo.startsWith("/eventos/")) {
-                destination = redirectTo;
+            // Verificar se o redirect é válido para o role do usuário
+            if (redirectTo) {
+                // Para ORGANIZER e GATE, permitir acesso a purchaseRoutes se vier de lá
+                if (userRole === "CUSTOMER" || (userRole !== "CUSTOMER" && redirectTo.startsWith("/eventos/"))) {
+                    destination = redirectTo;
+                } else if (userRole !== "CUSTOMER" && !roleRoutes[userRole].some(route => redirectTo.startsWith(route))) {
+                    // Se o redirect não é permitido para o role, usar home do role
+                    destination = roleHome[userRole];
+                }
             }
 
             // Usar window.location para forçar navegação completa

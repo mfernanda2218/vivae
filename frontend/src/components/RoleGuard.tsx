@@ -2,14 +2,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
 export type Role = "CUSTOMER" | "ORGANIZER" | "GATE";
 
 const roleRoutes: Record<Role, string[]> = {
     CUSTOMER: ["/eventos", "/meus-ingressos", "/checkout", "/checkout/sucesso", "/checkout/erro"],
-    ORGANIZER: ["/dashboard", "/eventos"],
+    ORGANIZER: ["/dashboard", "/eventos", "/portaria"],
     GATE: ["/portaria", "/eventos"],
 };
 
@@ -27,6 +27,7 @@ export function RoleGuard({
     allowedRoles: Role[];
 }) {
     const router = useRouter();
+    const pathname = usePathname();
     const [isLoading, setIsLoading] = useState(true);
     const [user, setUser] = useState<{ role: Role } | null>(null);
 
@@ -34,8 +35,11 @@ export function RoleGuard({
         const userData = localStorage.getItem("vivae_user");
 
         if (!userData) {
-            // Não redirecionar para /eventos, ir para login
-            router.push("/login");
+            // Não redirecionar se já estiver no login
+            if (pathname !== "/login" && pathname !== "/cadastro") {
+                router.push("/login");
+            }
+            setIsLoading(false);
             return;
         }
 
@@ -44,17 +48,25 @@ export function RoleGuard({
             setUser(parsedUser);
 
             if (!allowedRoles.includes(parsedUser.role)) {
-                // Redirecionar para a área correta do role
-                router.push(roleHome[parsedUser.role] || "/eventos");
+                // Redirecionar para a área correta do role, mas evitar loop
+                const targetRoute = roleHome[parsedUser.role] || "/eventos";
+                if (pathname !== targetRoute) {
+                    router.push(targetRoute);
+                }
                 return;
             }
         } catch {
-            router.push("/login");
+            // Dados corrompidos, limpar e redirecionar para login
+            localStorage.removeItem("vivae_token");
+            localStorage.removeItem("vivae_user");
+            if (pathname !== "/login") {
+                router.push("/login");
+            }
             return;
         }
 
         setIsLoading(false);
-    }, [router, allowedRoles]);
+    }, [router, allowedRoles, pathname]);
 
     if (isLoading) {
         return (

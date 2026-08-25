@@ -7,6 +7,7 @@ import Link from "next/link";
 import { Loader2 } from "lucide-react";
 import { CheckoutClient } from "@/app/checkout/CheckoutClient";
 import { getEvent } from "@/lib/api";
+import { roleHome, Role } from "@/lib/roles";
 import type { Event } from "@/types/event";
 
 export const dynamic = "force-dynamic";
@@ -32,6 +33,25 @@ export default function BuyEventPage({ params }: PageProps) {
         router.push(`/login?redirect=/eventos/${p.id}/comprar`);
       });
     } else {
+      // Verificar se o usuário é CUSTOMER (único role que pode comprar)
+      try {
+        const user = JSON.parse(userData || "{}") as { role: Role };
+        if (user.role !== "CUSTOMER") {
+          // Redirecionar para a home do role dele
+          const home = roleHome[user.role] || "/eventos";
+          router.push(home);
+          return;
+        }
+      } catch {
+        // Dados corrompidos, redirecionar para login
+        localStorage.removeItem("vivae_token");
+        localStorage.removeItem("vivae_user");
+        params.then((p) => {
+          router.push(`/login?redirect=/eventos/${p.id}/comprar`);
+        });
+        return;
+      }
+      
       params.then((p) => {
         setEventId(p.id);
       });
