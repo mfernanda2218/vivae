@@ -22,7 +22,7 @@ export function EventCard({ event }: { event: Event }) {
 
   return (
     <Link
-      href={`/eventos/${event.id}`}
+      href={`/eventos/${event.id}/comprar`}
       className="group flex h-full min-h-[390px] flex-col overflow-hidden rounded-lg border border-surface-2 bg-surface transition-all duration-200 hover:-translate-y-1 hover:border-accent hover:shadow-xl hover:shadow-accent/5"
     >
       <div className="aspect-[16/10] bg-surface-2">
