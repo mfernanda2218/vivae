@@ -86,10 +86,25 @@ export function GateClient({ events }: { events: Event[] }) {
   );
   const canScan = typeof window !== "undefined" && Boolean(window.BarcodeDetector);
 
+  const extractIdentifier = useCallback((input: string): string => {
+    const trimmed = input.trim();
+    
+    // Se for uma URL, extrair o código/token do final
+    if (trimmed.includes('/')) {
+      const parts = trimmed.split('/');
+      const lastPart = parts[parts.length - 1];
+      if (lastPart && lastPart.length > 0) {
+        return lastPart;
+      }
+    }
+    
+    return trimmed;
+  }, []);
+
   const submit = useCallback(
     async (action: "validate" | "cancel", forcedIdentifier?: string) => {
-      const nextIdentifier = (forcedIdentifier || identifier).trim();
-      if (!nextIdentifier) {
+      const rawIdentifier = (forcedIdentifier || identifier).trim();
+      if (!rawIdentifier) {
         setError("Informe o QR, link ou codigo do ingresso.");
         showToast({
           title: "Identificador vazio",
@@ -99,14 +114,17 @@ export function GateClient({ events }: { events: Event[] }) {
         return;
       }
 
+      const nextIdentifier = extractIdentifier(rawIdentifier);
+      
       setIsSubmitting(true);
       setError("");
 
       try {
+        const requestData = eventId ? { identifier: nextIdentifier, eventId } : { identifier: nextIdentifier };
         const response =
           action === "validate"
-            ? await validateGateTicket({ identifier: nextIdentifier, eventId })
-            : await cancelGateTicket({ identifier: nextIdentifier, eventId });
+            ? await validateGateTicket(requestData)
+            : await cancelGateTicket(requestData);
         setResult(response);
         showToast({
           title: response.message,
@@ -126,7 +144,7 @@ export function GateClient({ events }: { events: Event[] }) {
         setIsSubmitting(false);
       }
     },
-    [eventId, identifier, showToast],
+    [eventId, identifier, showToast, extractIdentifier],
   );
 
   useEffect(() => {
@@ -278,7 +296,7 @@ export function GateClient({ events }: { events: Event[] }) {
           <div className="grid gap-3 sm:grid-cols-2">
             <button
               type="submit"
-              disabled={isSubmitting || !eventId}
+              disabled={isSubmitting}
               className="flex h-11 items-center justify-center gap-2 rounded-md bg-accent px-4 text-sm font-black text-background transition-colors hover:bg-accent/90 disabled:opacity-50"
             >
               {isSubmitting ? (
@@ -290,7 +308,7 @@ export function GateClient({ events }: { events: Event[] }) {
             </button>
             <button
               type="button"
-              disabled={isSubmitting || !eventId}
+              disabled={isSubmitting}
               onClick={() => submit("cancel")}
               className="flex h-11 items-center justify-center gap-2 rounded-md border border-error/50 px-4 text-sm font-bold text-error transition-colors hover:bg-error/10 disabled:opacity-50"
             >
