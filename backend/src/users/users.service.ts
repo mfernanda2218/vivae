@@ -154,6 +154,19 @@ export class UsersService {
         },
         select: { id: true },
       });
+
+      if (events.length !== dto.eventIds.length) {
+        throw new BadRequestException('Alguns eventos não pertencem a este organizador');
+      }
+
+      // Associar portaria aos eventos usando raw query
+      for (const eventId of dto.eventIds) {
+        await this.prisma.$queryRaw`
+          INSERT INTO "_GateEvents" ("A", "B")
+          VALUES (${createdGate.id}, ${eventId})
+          ON CONFLICT DO NOTHING
+        `;
+      }
     }
 
     this.logger.log({
