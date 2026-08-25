@@ -45,12 +45,18 @@ export default function LoginPage() {
 
             // Verificar se o redirect é válido para o role do usuário
             if (redirectTo) {
-                // Para ORGANIZER e GATE, permitir acesso a purchaseRoutes se vier de lá
-                if (userRole === "CUSTOMER" || (userRole !== "CUSTOMER" && redirectTo.startsWith("/eventos/"))) {
+                if (userRole === "CUSTOMER") {
+                    // Cliente pode acessar qualquer redirect
                     destination = redirectTo;
-                } else if (userRole !== "CUSTOMER" && !roleRoutes[userRole].some(route => redirectTo.startsWith(route))) {
-                    // Se o redirect não é permitido para o role, usar home do role
-                    destination = roleHome[userRole];
+                } else {
+                    // ORGANIZER e GATE só podem acessar rotas permitidas
+                    const isAllowedRoute = roleRoutes[userRole].some(route => redirectTo.startsWith(route));
+                    if (isAllowedRoute) {
+                        destination = redirectTo;
+                    } else {
+                        // Se o redirect não é permitido, usar home do role
+                        destination = roleHome[userRole];
+                    }
                 }
             }
 
