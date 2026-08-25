@@ -8,7 +8,7 @@ export default async function GatePage() {
   const response = await getEvents({ limit: 100 });
 
   return (
-    <RoleGuard allowedRoles={["GATE"]}>
+    <RoleGuard allowedRoles={["GATE", "ORGANIZER"]}>
       <GateClient events={response.data} />
     </RoleGuard>
   );

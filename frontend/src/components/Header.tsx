@@ -21,13 +21,16 @@ export function Header() {
         const parsedUser = JSON.parse(userData);
         setIsAuthenticated(true);
         setUser(parsedUser);
+        console.log("Header: User authenticated", parsedUser);
       } catch {
         setIsAuthenticated(false);
         setUser(null);
+        console.log("Header: Failed to parse user data");
       }
     } else {
       setIsAuthenticated(false);
       setUser(null);
+      console.log("Header: No authentication data found");
     }
   }, [pathname]);
 
