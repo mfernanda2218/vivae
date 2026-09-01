@@ -11,12 +11,11 @@ import { PrismaService } from '../prisma/prisma.service';
 export class TicketsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(userId?: string) {
-    const currentUserId = await this.resolveUserId(userId);
+  async findAll(userId: string) {
     const tickets = await this.prisma.ticket.findMany({
       where: {
         reservation: {
-          userId: currentUserId,
+          userId: userId,
           status: 'CONFIRMED',
         },
       },
@@ -27,8 +26,7 @@ export class TicketsService {
     return Promise.all(tickets.map((ticket) => this.toTicketResponse(ticket)));
   }
 
-  async findOne(id: string, userId?: string) {
-    const currentUserId = await this.resolveUserId(userId);
+  async findOne(id: string, userId: string) {
     const ticket = await this.prisma.ticket.findUnique({
       where: { id },
       include: this.ticketInclude(),
@@ -38,14 +36,14 @@ export class TicketsService {
       throw new NotFoundException('Ingresso não encontrado');
     }
 
-    if (ticket.reservation.userId !== currentUserId) {
+    if (ticket.reservation.userId !== userId) {
       throw new ForbiddenException('Ingresso pertence a outro usuário');
     }
 
     return this.toTicketResponse(ticket);
   }
 
-  async share(id: string, userId?: string) {
+  async share(id: string, userId: string) {
     const ticket = await this.findOne(id, userId);
 
     return {
@@ -132,23 +130,6 @@ export class TicketsService {
     return process.env.FRONTEND_URL || 'http://localhost:3001';
   }
 
-  private async resolveUserId(userId?: string) {
-    if (userId) {
-      return userId;
-    }
-
-    const demoUser = await this.prisma.user.findFirst({
-      where: { role: 'CUSTOMER' },
-      orderBy: { createdAt: 'asc' },
-      select: { id: true },
-    });
-
-    if (!demoUser) {
-      throw new BadRequestException('Informe o header x-user-id');
-    }
-
-    return demoUser.id;
-  }
 }
 
 type TicketWithReservation = Awaited<

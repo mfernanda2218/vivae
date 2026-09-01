@@ -25,16 +25,13 @@ export class EventsService {
 
   constructor(private readonly prisma: PrismaService) { }
 
-  async findAll(filters: EventsFilterDto, organizerId?: string) {
+  async findAll(filters: EventsFilterDto) {
     const page = filters.page || 1;
     const limit = filters.limit || 12;
     const skip = (page - 1) * limit;
 
-    // Se for um organizador, filtrar por organizerId
-    // Se for um cliente, mostrar apenas eventos publicados
-    const where: Prisma.EventWhereInput = organizerId
-      ? { organizerId } // Organizador vê apenas seus eventos
-      : { status: EVENT_STATUS.PUBLISHED }; // Cliente vê apenas eventos publicados
+    // Mostrar apenas eventos publicados para o catálogo público
+    const where: Prisma.EventWhereInput = { status: EVENT_STATUS.PUBLISHED };
 
     if (filters.search) {
       const searchLower = filters.search.toLowerCase();

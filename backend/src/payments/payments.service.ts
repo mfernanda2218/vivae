@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma, Ticket } from '@prisma/client';
-import { createHash, randomBytes } from 'crypto';
+import { createHash, createHmac, randomBytes, timingSafeEqual } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { ProcessPaymentDto } from './dto/process-payment.dto';
 
@@ -37,10 +37,8 @@ export class PaymentsService {
   async process(
     reservationId: string,
     dto: ProcessPaymentDto,
-    userId?: string,
+    userId: string,
   ) {
-    const currentUserId = await this.resolveUserId(userId);
-
     return this.prisma.$transaction(async (tx) => {
       const reservation = await tx.reservation.findUnique({
         where: { id: reservationId },
@@ -51,7 +49,7 @@ export class PaymentsService {
         throw new NotFoundException('Reserva não encontrada');
       }
 
-      if (reservation.userId !== currentUserId) {
+      if (reservation.userId !== userId) {
         throw new ForbiddenException('Reserva pertence a outro usuário');
       }
 
@@ -85,7 +83,7 @@ export class PaymentsService {
         this.logger.warn({
           action: 'payment.expired',
           reservationId,
-          userId: currentUserId,
+          userId: userId,
         });
 
         return expired;
@@ -109,7 +107,7 @@ export class PaymentsService {
         this.logger.warn({
           action: 'payment.declined',
           reservationId,
-          userId: currentUserId,
+          userId: userId,
         });
 
         return declined;
@@ -133,7 +131,7 @@ export class PaymentsService {
       this.logger.log({
         action: 'payment.approved',
         reservationId,
-        userId: currentUserId,
+        userId: userId,
         tickets: tickets.length,
       });
 
@@ -152,7 +150,7 @@ export class PaymentsService {
     const tickets: Ticket[] = [];
 
     for (let index = 0; index < quantity; index += 1) {
-      const qrToken = randomBytes(32).toString('hex');
+      const qrToken = this.generateQrToken();
       tickets.push(
         await tx.ticket.create({
           data: {
@@ -167,6 +165,19 @@ export class PaymentsService {
     }
 
     return tickets;
+  }
+
+  private generateQrToken(): string {
+    const timestamp = Date.now();
+    const random = randomBytes(16).toString('hex');
+    const signature = this.createQrSignature(timestamp, random);
+    return `${timestamp}.${random}.${signature}`;
+  }
+
+  private createQrSignature(timestamp: number, random: string): string {
+    const secret = process.env.JWT_SECRET || 'vivae-dev-secret';
+    const payload = `${timestamp}:${random}`;
+    return createHmac('sha256', secret).update(payload).digest('hex').substring(0, 16);
   }
 
   private async returnStock(
@@ -221,21 +232,5 @@ export class PaymentsService {
     } satisfies Prisma.ReservationInclude;
   }
 
-  private async resolveUserId(userId?: string) {
-    if (userId) {
-      return userId;
-    }
 
-    const demoUser = await this.prisma.user.findFirst({
-      where: { role: 'CUSTOMER' },
-      orderBy: { createdAt: 'asc' },
-      select: { id: true },
-    });
-
-    if (!demoUser) {
-      throw new BadRequestException('Informe o header x-user-id');
-    }
-
-    return demoUser.id;
-  }
 }

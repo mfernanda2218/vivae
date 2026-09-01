@@ -1,21 +1,24 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Delete,
   Get,
-  Headers,
   Param,
   ParseUUIDPipe,
   Patch,
   Post,
   Query,
+  UseGuards,
 } from '@nestjs/common';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { CreateEventDto } from './dto/create-event.dto';
 import { EventsFilterDto } from './dto/events-filter.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { EventsService } from './events.service';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @ApiTags('Events')
 @Controller('events')
@@ -24,11 +27,8 @@ export class EventsController {
 
   @Get()
   @ApiOperation({ summary: 'Lista eventos publicados com filtros' })
-  findAll(
-    @Query() filters: EventsFilterDto,
-    @Headers('x-organizer-id') organizerId?: string,
-  ) {
-    return this.eventsService.findAll(filters, organizerId);
+  findAll(@Query() filters: EventsFilterDto) {
+    return this.eventsService.findAll(filters);
   }
 
   @Get(':id')
@@ -38,62 +38,69 @@ export class EventsController {
   }
 
   @Post()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ORGANIZER')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Cria evento em DRAFT' })
   create(
     @Body() dto: CreateEventDto,
-    @Headers('x-organizer-id') organizerId?: string,
+    @CurrentUser('id') organizerId: string,
   ) {
-    return this.eventsService.create(dto, this.getOrganizerId(organizerId));
+    return this.eventsService.create(dto, organizerId);
   }
 
   @Patch(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ORGANIZER')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Edita evento do organizador' })
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateEventDto,
-    @Headers('x-organizer-id') organizerId?: string,
+    @CurrentUser('id') organizerId: string,
   ) {
-    return this.eventsService.update(id, dto, this.getOrganizerId(organizerId));
+    return this.eventsService.update(id, dto, organizerId);
   }
 
   @Delete(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ORGANIZER')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Exclui evento do organizador' })
   remove(
     @Param('id', ParseUUIDPipe) id: string,
-    @Headers('x-organizer-id') organizerId?: string,
+    @CurrentUser('id') organizerId: string,
   ) {
-    return this.eventsService.remove(id, this.getOrganizerId(organizerId));
+    return this.eventsService.remove(id, organizerId);
   }
 
   @Post(':id/publish')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ORGANIZER')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Publica evento em DRAFT' })
   publish(
     @Param('id', ParseUUIDPipe) id: string,
-    @Headers('x-organizer-id') organizerId?: string,
+    @CurrentUser('id') organizerId: string,
   ) {
-    return this.eventsService.publish(id, this.getOrganizerId(organizerId));
+    return this.eventsService.publish(id, organizerId);
   }
 
   @Post(':id/cancel')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ORGANIZER')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Cancela evento do organizador' })
   cancel(
     @Param('id', ParseUUIDPipe) id: string,
-    @Headers('x-organizer-id') organizerId?: string,
+    @CurrentUser('id') organizerId: string,
   ) {
-    return this.eventsService.cancel(id, this.getOrganizerId(organizerId));
+    return this.eventsService.cancel(id, organizerId);
   }
 
   @Get(':id/seats')
   @ApiOperation({ summary: 'Lista assentos disponíveis para um evento' })
   getAvailableSeats(@Param('id', ParseUUIDPipe) id: string) {
     return this.eventsService.getAvailableSeats(id);
-  }
-
-  private getOrganizerId(organizerId?: string) {
-    if (!organizerId) {
-      throw new BadRequestException('Informe o header x-organizer-id');
-    }
-
-    return organizerId;
   }
 }

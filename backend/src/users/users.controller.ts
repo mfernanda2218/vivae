@@ -4,39 +4,47 @@ import {
   Controller,
   Delete,
   Get,
-  Headers,
   Param,
   ParseUUIDPipe,
   Patch,
   Post,
+  UseGuards,
 } from '@nestjs/common';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { CreateGateDto } from './dto/create-gate.dto';
 import { UsersService } from './users.service';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @ApiTags('Users')
 @Controller('users')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@ApiBearerAuth()
 export class UsersController {
   constructor(private readonly usersService: UsersService) { }
 
   @Get()
+  @Roles('ADMIN', 'ORGANIZER')
   @ApiOperation({ summary: 'Lista usuarios para perfis operacionais' })
-  findAll(@Headers('x-user-id') actorId?: string) {
+  findAll(@CurrentUser('id') actorId: string) {
     return this.usersService.findAll(actorId);
   }
 
   @Get('me')
-  @ApiOperation({ summary: 'Retorna o usuario autenticado pelo header' })
-  findMe(@Headers('x-user-id') actorId?: string) {
+  @ApiOperation({ summary: 'Retorna o usuario autenticado' })
+  findMe(@CurrentUser('id') actorId: string) {
     return this.usersService.findMe(actorId);
   }
 
   @Post('gate')
+  @Roles('ORGANIZER')
   @ApiOperation({ summary: 'Organizador cria usuario de portaria' })
   createGate(
     @Body() dto: CreateGateDto,
-    @Headers('x-organizer-id') organizerId?: string,
+    @CurrentUser('id') organizerId: string,
   ) {
     return this.usersService.createGate(dto, organizerId);
   }
@@ -45,7 +53,7 @@ export class UsersController {
   @ApiOperation({ summary: 'Detalha usuario com permissao de acesso' })
   findOne(
     @Param('id', ParseUUIDPipe) id: string,
-    @Headers('x-user-id') actorId?: string,
+    @CurrentUser('id') actorId: string,
   ) {
     return this.usersService.findOne(id, actorId);
   }
@@ -55,16 +63,17 @@ export class UsersController {
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateUserDto,
-    @Headers('x-user-id') actorId?: string,
+    @CurrentUser('id') actorId: string,
   ) {
     return this.usersService.update(id, dto, actorId);
   }
 
   @Delete(':id')
+  @Roles('ADMIN')
   @ApiOperation({ summary: 'Remove usuario sem vinculos operacionais' })
   remove(
     @Param('id', ParseUUIDPipe) id: string,
-    @Headers('x-user-id') actorId?: string,
+    @CurrentUser('id') actorId: string,
   ) {
     return this.usersService.remove(id, actorId);
   }
