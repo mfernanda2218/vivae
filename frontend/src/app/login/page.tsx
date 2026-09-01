@@ -30,8 +30,7 @@ export default function LoginPage() {
             const response = await login({ email, password });
 
             // Salvar no localStorage
-            localStorage.setItem("vivae_token", response.accessToken);
-            localStorage.setItem("vivae_user", JSON.stringify(response.user));
+            localStorage.setItem("vivae_auth", JSON.stringify(response));
 
             showToast({
                 title: "Login realizado",

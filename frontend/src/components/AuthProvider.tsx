@@ -6,8 +6,8 @@ import { useRouter } from "next/navigation";
 
 interface AuthContextType {
     isAuthenticated: boolean;
-    user: { name: string; role: string } | null;
-    login: (token: string, user: { name: string; role: string }) => void;
+    user: { name: string; role: string; id: string } | null;
+    login: (accessToken: string, user: { name: string; role: string; id: string }) => void;
     logout: () => void;
 }
 
@@ -20,18 +20,17 @@ const AuthContext = createContext<AuthContextType>({
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
-    const [user, setUser] = useState<{ name: string; role: string } | null>(null);
+    const [user, setUser] = useState<{ name: string; role: string; id: string } | null>(null);
     const router = useRouter();
 
     useEffect(() => {
-        const token = localStorage.getItem("vivae_token");
-        const userData = localStorage.getItem("vivae_user");
+        const authData = localStorage.getItem("vivae_auth");
 
-        if (token && userData) {
+        if (authData) {
             try {
-                const parsedUser = JSON.parse(userData);
+                const parsedAuth = JSON.parse(authData);
                 setIsAuthenticated(true);
-                setUser(parsedUser);
+                setUser(parsedAuth.user);
             } catch {
                 setIsAuthenticated(false);
                 setUser(null);
@@ -42,17 +41,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     }, []);
 
-    const login = (token: string, user: { name: string; role: string }) => {
-        localStorage.setItem("vivae_token", token);
-        localStorage.setItem("vivae_user", JSON.stringify(user));
+    const login = (accessToken: string, user: { name: string; role: string; id: string }) => {
+        localStorage.setItem("vivae_auth", JSON.stringify({ accessToken, user }));
         setIsAuthenticated(true);
         setUser(user);
         router.refresh();
     };
 
     const logout = () => {
-        localStorage.removeItem("vivae_token");
-        localStorage.removeItem("vivae_user");
+        localStorage.removeItem("vivae_auth");
         setIsAuthenticated(false);
         setUser(null);
         router.push("/");

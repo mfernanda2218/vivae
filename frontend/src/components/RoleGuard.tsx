@@ -32,9 +32,9 @@ export function RoleGuard({
     const [user, setUser] = useState<{ role: Role } | null>(null);
 
     useEffect(() => {
-        const userData = localStorage.getItem("vivae_user");
+        const authData = localStorage.getItem("vivae_auth");
 
-        if (!userData) {
+        if (!authData) {
             // Não redirecionar se já estiver no login
             if (pathname !== "/login" && pathname !== "/cadastro") {
                 router.push("/login");
@@ -44,12 +44,12 @@ export function RoleGuard({
         }
 
         try {
-            const parsedUser = JSON.parse(userData) as { role: Role };
-            setUser(parsedUser);
+            const parsedAuth = JSON.parse(authData) as { user: { role: Role } };
+            setUser(parsedAuth.user);
 
-            if (!allowedRoles.includes(parsedUser.role)) {
+            if (!allowedRoles.includes(parsedAuth.user.role)) {
                 // Redirecionar para a área correta do role, mas evitar loop
-                const targetRoute = roleHome[parsedUser.role] || "/eventos";
+                const targetRoute = roleHome[parsedAuth.user.role] || "/eventos";
                 if (pathname !== targetRoute) {
                     router.push(targetRoute);
                 }
@@ -57,8 +57,7 @@ export function RoleGuard({
             }
         } catch {
             // Dados corrompidos, limpar e redirecionar para login
-            localStorage.removeItem("vivae_token");
-            localStorage.removeItem("vivae_user");
+            localStorage.removeItem("vivae_auth");
             if (pathname !== "/login") {
                 router.push("/login");
             }
