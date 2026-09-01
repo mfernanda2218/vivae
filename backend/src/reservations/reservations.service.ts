@@ -7,9 +7,9 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { createHash } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateReservationDto } from './dto/create-reservation.dto';
+import { generateQrToken, hashToken } from '../common/qr.utils';
 
 const EVENT_STATUS = {
   PUBLISHED: 'PUBLISHED',
@@ -30,8 +30,8 @@ export class ReservationsService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(dto: CreateReservationDto, userId?: string) {
-    const currentUserId = await this.resolveUserId(userId);
+  async create(dto: CreateReservationDto, userId: string) {
+    const currentUserId = userId;
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
     return this.prisma.$transaction(async (tx) => {
@@ -143,18 +143,15 @@ export class ReservationsService {
     });
   }
 
-  async findAll(userId?: string) {
-    const currentUserId = await this.resolveUserId(userId);
-
+  async findAll(userId: string) {
     return this.prisma.reservation.findMany({
-      where: { userId: currentUserId },
+      where: { userId },
       orderBy: { createdAt: 'desc' },
       include: this.reservationInclude(),
     });
   }
 
-  async findOne(id: string, userId?: string) {
-    const currentUserId = await this.resolveUserId(userId);
+  async findOne(id: string, userId: string) {
     const reservation = await this.prisma.reservation.findUnique({
       where: { id },
       include: this.reservationInclude(),
@@ -164,15 +161,14 @@ export class ReservationsService {
       throw new NotFoundException('Reserva não encontrada');
     }
 
-    if (reservation.userId !== currentUserId) {
+    if (reservation.userId !== userId) {
       throw new ForbiddenException('Reserva pertence a outro usuário');
     }
 
     return reservation;
   }
 
-  async cancel(id: string, userId?: string) {
-    const currentUserId = await this.resolveUserId(userId);
+  async cancel(id: string, userId: string) {
 
     return this.prisma.$transaction(async (tx) => {
       const reservation = await tx.reservation.findUnique({
@@ -184,7 +180,7 @@ export class ReservationsService {
         throw new NotFoundException('Reserva não encontrada');
       }
 
-      if (reservation.userId !== currentUserId) {
+      if (reservation.userId !== userId) {
         throw new ForbiddenException('Reserva pertence a outro usuário');
       }
 
@@ -238,10 +234,83 @@ export class ReservationsService {
       this.logger.warn({
         action: 'reservation.cancel',
         reservationId: id,
-        userId: currentUserId,
+        userId: userId,
       });
 
       return cancelled;
+    });
+  }
+
+  async cancelTicket(ticketId: string, userId: string) {
+    return this.prisma.$transaction(async (tx) => {
+      const ticket = await tx.ticket.findUnique({
+        where: { id: ticketId },
+        include: {
+          reservation: {
+            include: { event: true, payment: true, tickets: true },
+          },
+        },
+      });
+
+      if (!ticket) {
+        throw new NotFoundException('Ingresso não encontrado');
+      }
+
+      if (ticket.reservation.userId !== userId) {
+        throw new ForbiddenException('Ingresso pertence a outro usuário');
+      }
+
+      if (ticket.status !== 'ACTIVE') {
+        throw new BadRequestException('Apenas ingressos ativos podem ser cancelados');
+      }
+
+      // Cancel individual ticket
+      await tx.ticket.update({
+        where: { id: ticketId },
+        data: { status: 'CANCELLED' },
+      });
+
+      // Return one unit to stock
+      await tx.event.update({
+        where: { id: ticket.reservation.eventId },
+        data: {
+          availableTickets: { increment: 1 },
+          status:
+            ticket.reservation.event.status === EVENT_STATUS.SOLD_OUT
+              ? EVENT_STATUS.PUBLISHED
+              : ticket.reservation.event.status,
+        },
+      });
+
+      // Check if all tickets in reservation are now closed
+      const remainingActive = await tx.ticket.count({
+        where: {
+          reservationId: ticket.reservationId,
+          status: { in: ['ACTIVE', 'USED'] },
+        },
+      });
+
+      // Only cancel reservation if ALL tickets are closed
+      if (remainingActive === 0) {
+        await tx.reservation.update({
+          where: { id: ticket.reservationId },
+          data: { status: RESERVATION_STATUS.CANCELLED },
+        });
+      }
+
+      this.logger.warn({
+        action: 'ticket.cancel',
+        ticketId: ticketId,
+        reservationId: ticket.reservationId,
+        userId: userId,
+      });
+
+      return {
+        success: true,
+        message: 'Ingresso cancelado individualmente',
+        ticketId: ticketId,
+        reservationStillActive: remainingActive > 0,
+      };
     });
   }
 
@@ -270,23 +339,7 @@ export class ReservationsService {
     } satisfies Prisma.ReservationInclude;
   }
 
-  private async resolveUserId(userId?: string) {
-    if (userId) {
-      return userId;
-    }
 
-    const demoUser = await this.prisma.user.findFirst({
-      where: { role: 'CUSTOMER' },
-      orderBy: { createdAt: 'asc' },
-      select: { id: true },
-    });
-
-    if (!demoUser) {
-      throw new BadRequestException('Informe o header x-user-id');
-    }
-
-    return demoUser.id;
-  }
 
   private generateTicketCode(): string {
     const timestamp = Date.now().toString(36).toUpperCase();
@@ -294,11 +347,4 @@ export class ReservationsService {
     return `${timestamp}-${random}`;
   }
 
-  private generateQrToken(): string {
-    return `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
-  }
-
-  private hashToken(token: string): string {
-    return createHash('sha256').update(token).digest('hex');
-  }
 }

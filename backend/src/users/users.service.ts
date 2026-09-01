@@ -19,7 +19,7 @@ export class UsersService {
 
   constructor(private readonly prisma: PrismaService) { }
 
-  async findAll(actorId?: string) {
+  async findAll(actorId: string) {
     await this.requireStaff(actorId);
 
     return this.prisma.user.findMany({
@@ -28,7 +28,7 @@ export class UsersService {
     });
   }
 
-  async findOne(id: string, actorId?: string) {
+  async findOne(id: string, actorId: string) {
     const actor = await this.resolveActor(actorId);
     this.ensureSelfOrStaff(actor, id);
 
@@ -38,21 +38,17 @@ export class UsersService {
     });
 
     if (!user) {
-      throw new NotFoundException('Usuario nao encontrado');
+      throw new NotFoundException('Usuário não encontrado');
     }
 
     return user;
   }
 
-  async findMe(actorId?: string) {
-    if (!actorId) {
-      throw new BadRequestException('Informe o header x-user-id');
-    }
-
+  async findMe(actorId: string) {
     return this.findOne(actorId, actorId);
   }
 
-  async update(id: string, dto: UpdateUserDto, actorId?: string) {
+  async update(id: string, dto: UpdateUserDto, actorId: string) {
     const actor = await this.resolveActor(actorId);
     this.ensureSelfOrStaff(actor, id);
 
@@ -66,7 +62,7 @@ export class UsersService {
     });
 
     if (!existing) {
-      throw new NotFoundException('Usuario nao encontrado');
+      throw new NotFoundException('Usuário não encontrado');
     }
 
     const data: Prisma.UserUpdateInput = {};
@@ -83,7 +79,7 @@ export class UsersService {
       });
 
       if (emailOwner && emailOwner.id !== id) {
-        throw new ConflictException('Email ja cadastrado');
+        throw new ConflictException('Email já cadastrado');
       }
 
       data.email = email;
@@ -111,11 +107,7 @@ export class UsersService {
     return updated;
   }
 
-  async createGate(dto: CreateGateDto, organizerId?: string) {
-    if (!organizerId) {
-      throw new BadRequestException('Informe o header x-organizer-id');
-    }
-
+  async createGate(dto: CreateGateDto, organizerId: string) {
     const organizer = await this.prisma.user.findUnique({
       where: { id: organizerId },
       select: { id: true, role: true },
@@ -130,7 +122,7 @@ export class UsersService {
     });
 
     if (existing) {
-      throw new ConflictException('Email ja cadastrado');
+      throw new ConflictException('Email já cadastrado');
     }
 
     const passwordHash = await bcrypt.hash(dto.password, 12);
@@ -178,11 +170,11 @@ export class UsersService {
     return createdGate;
   }
 
-  async remove(id: string, actorId?: string) {
+  async remove(id: string, actorId: string) {
     const actor = await this.resolveActor(actorId);
 
     if (actor.role !== 'ADMIN' && actor.id !== id) {
-      throw new ForbiddenException('Sem permissao para remover este usuario');
+      throw new ForbiddenException('Sem permissão para remover este usuário');
     }
 
     const [user, reservations, events] = await Promise.all([
@@ -195,12 +187,12 @@ export class UsersService {
     ]);
 
     if (!user) {
-      throw new NotFoundException('Usuario nao encontrado');
+      throw new NotFoundException('Usuário não encontrado');
     }
 
     if (reservations > 0 || events > 0) {
       throw new BadRequestException(
-        'Usuario possui reservas ou eventos vinculados',
+        'Usuário possui reservas ou eventos vinculados',
       );
     }
 
@@ -210,18 +202,14 @@ export class UsersService {
     return user;
   }
 
-  private async resolveActor(actorId?: string) {
-    if (!actorId) {
-      throw new BadRequestException('Informe o header x-user-id');
-    }
-
+  private async resolveActor(actorId: string) {
     const actor = await this.prisma.user.findUnique({
       where: { id: actorId },
       select: { id: true, role: true },
     });
 
     if (!actor) {
-      throw new ForbiddenException('Usuario autenticado invalido');
+      throw new ForbiddenException('Usuário autenticado inválido');
     }
 
     return actor;
@@ -231,7 +219,7 @@ export class UsersService {
     const actor = await this.resolveActor(actorId);
 
     if (!['ADMIN', 'ORGANIZER', 'GATE'].includes(actor.role)) {
-      throw new ForbiddenException('Sem permissao para listar usuarios');
+      throw new ForbiddenException('Sem permissão para listar usuários');
     }
 
     return actor;
@@ -243,7 +231,7 @@ export class UsersService {
     }
 
     if (!['ADMIN', 'ORGANIZER', 'GATE'].includes(actor.role)) {
-      throw new ForbiddenException('Sem permissao para acessar este usuario');
+      throw new ForbiddenException('Sem permissão para acessar este usuário');
     }
   }
 

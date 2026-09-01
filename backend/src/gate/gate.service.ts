@@ -10,6 +10,7 @@ import { Prisma } from '@prisma/client';
 import { createHash } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { GateActionDto } from './dto/gate-action.dto';
+import { verifyQrSignature, createQrSignature, hashToken } from '../common/qr.utils';
 
 const EVENT_STATUS = {
   CANCELLED: 'CANCELLED',
@@ -36,7 +37,7 @@ export class GateService {
 
   constructor(private readonly prisma: PrismaService) { }
 
-  async validate(dto: GateActionDto, userId?: string) {
+  async validate(dto: GateActionDto, userId: string) {
     // Verificar se usuário é portaria válida
     const gate = await this.verifyGateAccess(userId, dto.eventId);
 
@@ -47,7 +48,7 @@ export class GateService {
     const ticket = await this.findTicket(dto.identifier);
 
     if (!ticket) {
-      return this.invalid('INVALID', 'Ingresso nao encontrado');
+      return this.invalid('INVALID', 'Ingresso não encontrado');
     }
 
     const statusResult = this.checkTicketStatus(ticket, dto.eventId);
@@ -60,7 +61,7 @@ export class GateService {
       data: {
         status: TICKET_STATUS.USED,
         validatedAt: new Date(),
-        validatedBy: userId || 'gate',
+        validatedBy: userId,
       },
     });
 
@@ -72,8 +73,8 @@ export class GateService {
 
       return current
         ? this.checkTicketStatus(current, dto.eventId) ||
-        this.invalid('INVALID', 'Ingresso nao pode ser validado')
-        : this.invalid('INVALID', 'Ingresso nao encontrado');
+        this.invalid('INVALID', 'Ingresso não pode ser validado')
+        : this.invalid('INVALID', 'Ingresso não encontrado');
     }
 
     const validated = await this.prisma.ticket.findUniqueOrThrow({
@@ -84,7 +85,7 @@ export class GateService {
       action: 'gate.validate',
       ticketId: ticket.id,
       eventId: validated.reservation.eventId,
-      userId: userId || 'gate',
+      userId: userId,
       gateId: gate?.id || 'unknown',
     });
 
@@ -96,7 +97,7 @@ export class GateService {
     };
   }
 
-  async cancel(dto: GateActionDto, userId?: string) {
+  async cancel(dto: GateActionDto, userId: string) {
     // Verificar se usuário é portaria válida
     const gate = await this.verifyGateAccess(userId, dto.eventId);
 
@@ -107,7 +108,7 @@ export class GateService {
     const ticket = await this.findTicket(dto.identifier);
 
     if (!ticket) {
-      return this.invalid('INVALID', 'Ingresso nao encontrado');
+      return this.invalid('INVALID', 'Ingresso não encontrado');
     }
 
     if (dto.eventId && ticket.reservation.eventId !== dto.eventId) {
@@ -119,19 +120,19 @@ export class GateService {
     }
 
     if (ticket.status === TICKET_STATUS.CANCELLED) {
-      return this.invalid('CANCELLED', 'Ingresso ja esta cancelado', ticket);
+      return this.invalid('CANCELLED', 'Ingresso já está cancelado', ticket);
     }
 
     if (ticket.status === TICKET_STATUS.USED) {
       return this.invalid(
         'ALREADY_USED',
-        'Ingresso ja utilizado nao pode ser cancelado',
+        'Ingresso já utilizado não pode ser cancelado',
         ticket,
       );
     }
 
     if (ticket.status !== TICKET_STATUS.ACTIVE) {
-      return this.invalid('INVALID', 'Ingresso nao pode ser cancelado', ticket);
+      return this.invalid('INVALID', 'Ingresso não pode ser cancelado', ticket);
     }
 
     const cancelled = await this.prisma.$transaction(async (tx) => {
@@ -139,12 +140,12 @@ export class GateService {
         where: { id: ticket.id, status: TICKET_STATUS.ACTIVE },
         data: {
           status: TICKET_STATUS.CANCELLED,
-          validatedBy: userId || ticket.validatedBy,
+          validatedBy: userId,
         },
       });
 
       if (update.count === 0) {
-        throw new BadRequestException('Ingresso nao pode ser cancelado');
+        throw new BadRequestException('Ingresso não pode ser cancelado');
       }
 
       await this.returnStock(tx, ticket.reservation.eventId, 1);
@@ -159,7 +160,7 @@ export class GateService {
       action: 'gate.cancel',
       ticketId: ticket.id,
       eventId: cancelled.reservation.eventId,
-      userId: userId || 'gate',
+      userId: userId,
       gateId: gate?.id || 'unknown',
     });
 
@@ -171,10 +172,9 @@ export class GateService {
     };
   }
 
-  async dashboard(organizerId?: string, eventId?: string) {
-    const currentOrganizerId = await this.resolveOrganizerId(organizerId);
+  async dashboard(organizerId: string, eventId?: string) {
     const eventWhere: Prisma.EventWhereInput = {
-      organizerId: currentOrganizerId,
+      organizerId: organizerId,
       ...(eventId ? { id: eventId } : {}),
     };
     const ticketWhere: Prisma.TicketWhereInput = {
@@ -245,7 +245,7 @@ export class GateService {
     const conversionRate = totalCapacity > 0 ? Math.round((totalSold / totalCapacity) * 100) : 0;
 
     return {
-      organizerId: currentOrganizerId,
+      organizerId: organizerId,
       totals: {
         events: events.length,
         reservations,
@@ -406,7 +406,7 @@ export class GateService {
     }
 
     if (ticket.status === TICKET_STATUS.USED) {
-      return this.invalid('ALREADY_USED', 'Ingresso ja utilizado', ticket);
+      return this.invalid('ALREADY_USED', 'Ingresso já utilizado', ticket);
     }
 
     if (
@@ -416,7 +416,7 @@ export class GateService {
     ) {
       return this.invalid(
         'INVALID',
-        'Ingresso ainda nao esta confirmado',
+        'Ingresso ainda não está confirmado',
         ticket,
       );
     }
@@ -428,6 +428,14 @@ export class GateService {
     const normalized = this.normalizeIdentifier(identifier);
     const upperCode = normalized.toUpperCase();
     const tokenHash = this.hashToken(normalized);
+
+    // Verify QR token signature if it follows the new format
+    if (normalized.includes('.')) {
+      if (!this.verifyQrSignature(normalized)) {
+        this.logger.warn(`Invalid QR token signature: ${normalized.substring(0, 20)}...`);
+        return null;
+      }
+    }
 
     return this.prisma.ticket.findFirst({
       where: {
@@ -441,6 +449,7 @@ export class GateService {
       include: this.ticketInclude(),
     });
   }
+
 
   private normalizeIdentifier(identifier: string) {
     const value = identifier.trim();
@@ -519,6 +528,8 @@ export class GateService {
       },
     });
 
+    // Only cancel the reservation if ALL tickets are closed
+    // This preserves valid tickets when cancelling individual tickets
     if (remainingActive === 0) {
       await tx.reservation.update({
         where: { id: reservationId },
@@ -547,27 +558,7 @@ export class GateService {
     } satisfies Prisma.TicketInclude;
   }
 
-  private hashToken(token: string) {
-    return createHash('sha256').update(token).digest('hex');
-  }
 
-  private async resolveOrganizerId(organizerId?: string) {
-    if (organizerId) {
-      return organizerId;
-    }
-
-    const demoOrganizer = await this.prisma.user.findFirst({
-      where: { role: 'ORGANIZER' },
-      orderBy: { createdAt: 'asc' },
-      select: { id: true },
-    });
-
-    if (!demoOrganizer) {
-      throw new NotFoundException('Organizador demo nao encontrado');
-    }
-
-    return demoOrganizer.id;
-  }
 }
 
 type GateTicket = Prisma.TicketGetPayload<{
