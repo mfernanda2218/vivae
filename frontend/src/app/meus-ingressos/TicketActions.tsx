@@ -3,12 +3,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Ban, Download, Loader2 } from "lucide-react";
-import { cancelReservation } from "@/lib/api";
+import { Ban, Download, Loader2, Share2 } from "lucide-react";
+import { cancelReservation, cancelTicket } from "@/lib/api";
 import { useToast } from "@/components/ToastProvider";
 
 type TicketActionsProps = {
   reservationId: string;
+  ticketId: string;
   shareUrl: string;
   code: string;
   qrCodeDataUrl: string;
@@ -19,6 +20,7 @@ type TicketActionsProps = {
 
 export function TicketActions({
   reservationId,
+  ticketId,
   shareUrl,
   code,
   qrCodeDataUrl,
@@ -134,9 +136,26 @@ export function TicketActions({
     }
   }
 
+  async function handleShare() {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      showToast({
+        title: "Link copiado",
+        description: "Link do ingresso copiado para a área de transferência",
+        variant: "success",
+      });
+    } catch (err) {
+      showToast({
+        title: "Erro ao copiar",
+        description: "Não foi possível copiar o link",
+        variant: "error",
+      });
+    }
+  }
+
   async function onCancel() {
     const confirmed = window.confirm(
-      "Cancelar esta reserva? Os ingressos ativos serao cancelados e o estoque sera devolvido.",
+      "Cancelar este ingresso? O estoque será devolvido para venda. Outros ingressos desta reserva permanecerão válidos.",
     );
 
     if (!confirmed) {
@@ -146,16 +165,18 @@ export function TicketActions({
     setIsCancelling(true);
 
     try {
-      await cancelReservation(reservationId);
+      const result = await cancelTicket(ticketId);
       showToast({
-        title: "Reserva cancelada",
-        description: `O ingresso ${code} foi atualizado e o estoque voltou para venda.`,
+        title: "Ingresso cancelado",
+        description: result.reservationStillActive 
+          ? "Ingresso cancelado. A reserva permanece ativa com os demais ingressos."
+          : "Ingresso cancelado e reserva encerrada.",
         variant: "success",
       });
       router.refresh();
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Nao foi possivel cancelar a reserva.";
+        err instanceof Error ? err.message : "Não foi possível cancelar o ingresso.";
       showToast({
         title: "Falha ao cancelar",
         description: message,
@@ -168,6 +189,14 @@ export function TicketActions({
 
   return (
     <div className="flex flex-wrap gap-2">
+      <button
+        type="button"
+        onClick={handleShare}
+        className="flex h-10 items-center gap-2 rounded-md border border-surface-2 px-3 text-sm font-bold text-text transition-all duration-200 hover:-translate-y-0.5 hover:bg-surface-2"
+      >
+        <Share2 className="h-4 w-4" />
+        Compartilhar
+      </button>
       <button
         type="button"
         onClick={handleDownload}

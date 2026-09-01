@@ -26,6 +26,7 @@ export function Filters() {
       ["dateTo", dateTo],
       ["minPrice", minPrice],
       ["maxPrice", maxPrice],
+      ["sortBy", sortBy],
     ].forEach(([key, value]) => {
       if (value) params.set(key, value);
       else params.delete(key);

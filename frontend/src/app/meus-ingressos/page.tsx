@@ -78,6 +78,7 @@ export default async function MyTicketsPage() {
 
                   <TicketActions
                     reservationId={ticket.reservation.id}
+                    ticketId={ticket.id}
                     shareUrl={ticket.shareUrl}
                     code={ticket.code}
                     qrCodeDataUrl={ticket.qrCodeDataUrl}
