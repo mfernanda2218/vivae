@@ -1,6 +1,6 @@
 # Vivae
 
-Vivae e uma plataforma de eventos com catalogo publico, checkout simulado, emissao de ingressos com QR Code, portaria para validacao/cancelamento e dashboard operacional para organizadores.
+Vivae é uma plataforma de eventos com catálogo público, checkout simulado, emissão de ingressos com QR Code, portaria para validação/cancelamento e dashboard operacional para organizadores.
 
 ## Stack
 
@@ -18,13 +18,13 @@ vivae/
 
 ## Funcionalidades
 
-- Catalogo de eventos com busca, categorias e filtros por cidade, data e preco.
+- Catálogo de eventos com busca, categorias e filtros por cidade, data e preço.
 - Dashboard do organizador com eventos, ingressos, estoque, cancelamentos e check-ins.
-- Checkout com reserva transacional de estoque, pagamento aprovado/recusado e emissao de ingressos.
-- Meus ingressos com QR Code, link publico e cancelamento de reserva com devolucao de estoque.
-- Portaria com validacao manual, leitura de QR quando suportada pelo navegador e cancelamento de ingresso.
-- Estados de loading, empty, error, toasts, animacoes discretas e microinteracoes.
-- Tratamento global de erros, DTOs, validacoes, logs e headers basicos de seguranca no backend.
+- Checkout com reserva transacional de estoque, pagamento aprovado/recusado e emissão de ingressos.
+- Meus ingressos com QR Code, link público e cancelamento de reserva com devolução de estoque.
+- Portaria com validação manual, leitura de QR quando suportada pelo navegador e cancelamento de ingresso.
+- Estados de loading, empty, error, toasts, animações discretas e microinterações.
+- Tratamento global de erros, DTOs, validações, logs e headers básicos de segurança no backend.
 
 ## Requisitos
 
@@ -32,7 +32,7 @@ vivae/
 - npm
 - PostgreSQL
 
-## Variaveis de ambiente
+## Variáveis de ambiente
 
 Backend (`backend/.env`):
 
@@ -91,28 +91,27 @@ O seed cria:
 Modulos principais:
 
 - `auth`: registro, login e JWT.
-- `users`: listagem operacional, perfil atual, detalhe, atualizacao e remocao protegida.
-- `events`: CRUD de eventos, publicacao, cancelamento e filtros.
-- `reservations`: reserva de ingressos com baixa de estoque e cancelamento com devolucao.
-- `payments`: pagamento simulado, emissao de tickets e devolucao de estoque em recusa/expiracao.
-- `tickets`: listagem de ingressos, detalhe, compartilhamento e pagina publica por token.
-- `gate`: validacao/cancelamento de ingresso e dashboard operacional.
+- `users`: listagem operacional, perfil atual, detalhe, atualização e remoção protegida.
+- `events`: CRUD de eventos, publicação, cancelamento e filtros.
+- `reservations`: reserva de ingressos com baixa de estoque e cancelamento com devolução.
+- `payments`: pagamento simulado, emissão de tickets e devolução de estoque em recusa/expiração.
+- `tickets`: listagem de ingressos, detalhe, compartilhamento e página pública por token.
+- `gate`: validação/cancelamento de ingresso e dashboard operacional.
 - `catalog`: busca externa via Ticketmaster quando configurada.
 
-### Headers operacionais
+### Autenticação e Autorização
 
-Enquanto nao ha guard JWT aplicado nas rotas, a API usa headers explicitos para simular contexto:
-
-- `x-user-id`: cliente, portaria, organizador ou admin nas rotas de usuario/reserva/ticket/gate.
-- `x-organizer-id`: organizador dono do evento nas rotas administrativas de eventos.
+- JWT tokens são gerados no login/registro e devem ser enviados no header `Authorization: Bearer <token>`
+- Guards JWT aplicados em todas as rotas protegidas
+- Role-based access control (RBAC) para CUSTOMER, ORGANIZER, GATE, ADMIN
 
 ### Estoque e cancelamento
 
-- Criar reserva decrementa `availableTickets` dentro de transacao.
+- Criar reserva decrementa `availableTickets` dentro de transação.
 - Pagamento recusado ou reserva expirada devolve estoque.
-- Cancelar reserva cancela tickets ativos, recusa pagamento pendente e devolve ao estoque os ingressos elegiveis.
+- Cancelar reserva cancela tickets ativos, recusa pagamento pendente e devolve ao estoque os ingressos elegíveis.
 - Cancelar ingresso na portaria devolve uma unidade ao estoque e encerra a reserva se todos os tickets ficarem fechados.
-- Eventos esgotados voltam para `PUBLISHED` quando estoque e devolvido.
+- Eventos esgotados voltam para `PUBLISHED` quando estoque é devolvido.
 
 ## Endpoints principais
 
@@ -134,11 +133,12 @@ Enquanto nao ha guard JWT aplicado nas rotas, a API usa headers explicitos para 
 - `GET /reservations`
 - `GET /reservations/:id`
 - `POST /reservations/:id/cancel`
+- `POST /reservations/tickets/:ticketId/cancel`
 - `POST /payments/:reservationId`
 - `GET /tickets`
 - `GET /tickets/:id`
 - `GET /tickets/public/:token`
-- `POST /tickets/:id/share`
+- `GET /tickets/:id/share`
 - `POST /gate/validate`
 - `POST /gate/cancel`
 - `GET /gate/dashboard`
@@ -153,9 +153,9 @@ Paginas principais:
 - `/checkout`: fluxo de reserva/pagamento.
 - `/checkout/sucesso` e `/checkout/erro`: resultado do pagamento.
 - `/meus-ingressos`: ingressos emitidos, QR Code, compartilhamento e cancelamento.
-- `/ingresso/[token]`: ingresso publico compartilhavel.
-- `/portaria`: validacao e cancelamento de ingressos.
-- `/dashboard`: metricas do organizador.
+- `/ingresso/[token]`: ingresso público compartilhável.
+- `/portaria`: validação e cancelamento de ingressos.
+- `/dashboard`: métricas do organizador.
 
 Componentes compartilhados:
 
@@ -181,14 +181,16 @@ npm run lint
 npm run build
 ```
 
-Os testes unitarios de `users` cobrem as funcoes principais do service e a delegacao do controller: listar, perfil atual, buscar por id, atualizar e remover.
+Os testes unitários de `users` cobrem as funções principais do service e a delegação do controller: listar, perfil atual, buscar por id, atualizar e remover.
 
-## Observacoes de seguranca
+## Observações de segurança
 
-- Senhas sao armazenadas com bcrypt.
-- Respostas de usuario nao retornam `passwordHash`.
+- Senhas são armazenadas com bcrypt.
+- Respostas de usuário não retornam `passwordHash`.
 - DTOs usam whitelist global e bloqueiam campos extras.
 - Filtro global normaliza erros HTTP e erros Prisma conhecidos.
-- Headers de seguranca basicos sao aplicados no bootstrap.
-- Em producao, substitua os headers simulados por guards JWT/roles em todas as rotas protegidas.
+- Headers de segurança básicos são aplicados no bootstrap.
+- Guards JWT e Roles aplicados em todas as rotas protegidas.
+- QR Codes com assinatura criptográfica HMAC-SHA256 para prevenção de falsificação.
+- Timing-safe comparison para verificação de assinaturas de QR Code.
 
