@@ -25,7 +25,7 @@ export class AuthService {
     const existing = await this.prisma.user.findUnique({ where: { email } });
 
     if (existing) {
-      throw new ConflictException('Email ja cadastrado');
+      throw new ConflictException('Email já cadastrado');
     }
 
     const passwordHash = await bcrypt.hash(dto.password, 12);
@@ -52,12 +52,12 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({ where: { email } });
 
     if (!user) {
-      throw new UnauthorizedException('Credenciais invalidas');
+      throw new UnauthorizedException('Credenciais inválidas');
     }
 
     const isValid = await bcrypt.compare(dto.password, user.passwordHash);
     if (!isValid) {
-      throw new UnauthorizedException('Credenciais invalidas');
+      throw new UnauthorizedException('Credenciais inválidas');
     }
 
     if (!process.env.JWT_SECRET) {
@@ -82,7 +82,7 @@ export class AuthService {
     role: string;
   }) {
     if (!user.id || !user.role) {
-      throw new BadRequestException('Usuario invalido');
+      throw new BadRequestException('Usuário inválido');
     }
 
     return {
