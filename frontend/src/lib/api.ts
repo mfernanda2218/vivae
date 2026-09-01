@@ -28,32 +28,13 @@ function buildUrl(path: string, filters?: object) {
   return url.toString();
 }
 
-function getOrganizerId(): string | undefined {
+function getAuthToken(): string | undefined {
   if (typeof window !== 'undefined') {
-    const userData = localStorage.getItem('vivae_user');
-    if (userData) {
+    const authData = localStorage.getItem('vivae_auth');
+    if (authData) {
       try {
-        const user = JSON.parse(userData);
-        if (user.role === 'ORGANIZER' && user.id) {
-          return user.id;
-        }
-      } catch {
-        return undefined;
-      }
-    }
-  }
-  return undefined;
-}
-
-function getUserId(): string | undefined {
-  if (typeof window !== 'undefined') {
-    const userData = localStorage.getItem('vivae_user');
-    if (userData) {
-      try {
-        const user = JSON.parse(userData);
-        if (user.id) {
-          return user.id;
-        }
+        const auth = JSON.parse(authData);
+        return auth.accessToken;
       } catch {
         return undefined;
       }
@@ -63,21 +44,16 @@ function getUserId(): string | undefined {
 }
 
 async function apiFetch<T>(path: string, filters?: object): Promise<T> {
-  const organizerId = getOrganizerId();
-  const userId = getUserId();
+  const token = getAuthToken();
   const headers: Record<string, string> = { Accept: 'application/json' };
 
-  if (organizerId) {
-    headers['x-organizer-id'] = organizerId;
-  }
-
-  if (userId) {
-    headers['x-user-id'] = userId;
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
   }
 
   const response = await fetch(buildUrl(path, filters), {
-    headers: { Accept: 'application/json' },
-    next: { revalidate: 30 },
+    headers,
+    cache: 'no-store',
   });
 
   if (!response.ok) {
@@ -88,19 +64,14 @@ async function apiFetch<T>(path: string, filters?: object): Promise<T> {
 }
 
 async function apiMutation<T>(path: string, body?: object): Promise<T> {
-  const organizerId = getOrganizerId();
-  const userId = getUserId();
+  const token = getAuthToken();
   const headers: Record<string, string> = {
     Accept: 'application/json',
     'Content-Type': 'application/json',
   };
 
-  if (organizerId) {
-    headers['x-organizer-id'] = organizerId;
-  }
-
-  if (userId) {
-    headers['x-user-id'] = userId;
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
   }
 
   const response = await fetch(buildUrl(path), {
@@ -119,19 +90,14 @@ async function apiMutation<T>(path: string, body?: object): Promise<T> {
 }
 
 async function apiPost<T>(path: string, body?: object): Promise<T> {
-  const organizerId = getOrganizerId();
-  const userId = getUserId();
+  const token = getAuthToken();
   const headers: Record<string, string> = {
     Accept: 'application/json',
     'Content-Type': 'application/json',
   };
 
-  if (organizerId) {
-    headers['x-organizer-id'] = organizerId;
-  }
-
-  if (userId) {
-    headers['x-user-id'] = userId;
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
   }
 
   const response = await fetch(buildUrl(path), {
@@ -151,16 +117,11 @@ async function apiPost<T>(path: string, body?: object): Promise<T> {
 }
 
 async function apiFetchNoStore<T>(path: string, filters?: object): Promise<T> {
-  const organizerId = getOrganizerId();
-  const userId = getUserId();
+  const token = getAuthToken();
   const headers: Record<string, string> = { Accept: 'application/json' };
 
-  if (organizerId) {
-    headers['x-organizer-id'] = organizerId;
-  }
-
-  if (userId) {
-    headers['x-user-id'] = userId;
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
   }
 
   const response = await fetch(buildUrl(path, filters), {
@@ -247,13 +208,13 @@ export async function createGateUser(data: {
   password: string;
   eventIds?: string[];
 }): Promise<RegisterResponse> {
-  const organizerId = getOrganizerId();
+  const token = getAuthToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
 
-  if (organizerId) {
-    headers['x-organizer-id'] = organizerId;
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
   }
 
   const response = await fetch(`${API_URL}/users/gate`, {
@@ -299,6 +260,10 @@ export async function getReservation(id: string): Promise<Reservation | null> {
 
 export async function cancelReservation(id: string): Promise<Reservation> {
   return apiMutation<Reservation>(`/reservations/${id}/cancel`);
+}
+
+export async function cancelTicket(ticketId: string): Promise<{ success: boolean; message: string; ticketId: string; reservationStillActive: boolean }> {
+  return apiMutation<{ success: boolean; message: string; ticketId: string; reservationStillActive: boolean }>(`/reservations/tickets/${ticketId}/cancel`);
 }
 
 export async function getTickets(): Promise<TicketWithQr[]> {
@@ -347,4 +312,69 @@ export async function getGateDashboard(eventId?: string): Promise<GateDashboard 
   } catch {
     return null;
   }
+}
+
+export async function createEvent(data: {
+  title: string;
+  description: string;
+  imageUrl?: string;
+  category: string;
+  date: string;
+  location: string;
+  capacity: number;
+  price: number;
+  externalId?: string;
+  seatType?: string;
+  rows?: number;
+  seatsPerRow?: number;
+}): Promise<Event> {
+  return apiMutation<Event>('/events', data);
+}
+
+export async function updateEvent(id: string, data: Partial<{
+  title: string;
+  description: string;
+  imageUrl?: string;
+  category: string;
+  date: string;
+  location: string;
+  capacity: number;
+  price: number;
+  seatType?: string;
+  rows?: number;
+  seatsPerRow?: number;
+}>): Promise<Event> {
+  return apiMutation<Event>(`/events/${id}`, data);
+}
+
+export async function publishEvent(id: string): Promise<Event> {
+  return apiMutation<Event>(`/events/${id}/publish`, {});
+}
+
+export async function cancelEvent(id: string): Promise<Event> {
+  return apiMutation<Event>(`/events/${id}/cancel`, {});
+}
+
+export async function deleteEvent(id: string): Promise<Event> {
+  const token = getAuthToken();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const response = await fetch(buildUrl(`/events/${id}`), {
+    method: 'DELETE',
+    headers,
+  });
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null);
+    const message = payload?.message || `API request failed with status ${response.status}`;
+    throw new Error(Array.isArray(message) ? message.join(', ') : message);
+  }
+
+  return response.json() as Promise<Event>;
 }
