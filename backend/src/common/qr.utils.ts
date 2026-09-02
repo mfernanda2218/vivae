@@ -1,4 +1,4 @@
-import { createHmac, createHash, timingSafeEqual } from 'crypto';
+import { createHmac, createHash, timingSafeEqual, randomBytes } from 'crypto';
 
 /**
  * Generates a cryptographically signed QR token
@@ -6,7 +6,7 @@ import { createHmac, createHash, timingSafeEqual } from 'crypto';
  */
 export function generateQrToken(): string {
   const timestamp = Date.now();
-  const random = crypto.randomBytes(16).toString('hex');
+  const random = randomBytes(16).toString('hex');
   const signature = createQrSignature(timestamp, random);
   return `${timestamp}.${random}.${signature}`;
 }
