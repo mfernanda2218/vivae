@@ -202,7 +202,11 @@ export class UsersService {
     return user;
   }
 
-  private async resolveActor(actorId: string) {
+  private async resolveActor(actorId?: string) {
+    if (!actorId) {
+      throw new ForbiddenException('Usuário autenticado inválido');
+    }
+    
     const actor = await this.prisma.user.findUnique({
       where: { id: actorId },
       select: { id: true, role: true },
