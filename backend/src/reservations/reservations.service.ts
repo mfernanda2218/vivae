@@ -117,12 +117,13 @@ export class ReservationsService {
             ? dto.seats[index].split('-')
             : null;
 
+          const generatedQrToken = generateQrToken();
           return tx.ticket.create({
             data: {
               reservationId: reservation.id,
               code: this.generateTicketCode(),
-              qrToken: this.generateQrToken(),
-              qrTokenHash: this.hashToken(this.generateQrToken()),
+              qrToken: generatedQrToken,
+              qrTokenHash: hashToken(generatedQrToken),
               seatRow: seatAssignment?.[0] || null,
               seatNumber: seatAssignment?.[1] || null,
             } as any,
