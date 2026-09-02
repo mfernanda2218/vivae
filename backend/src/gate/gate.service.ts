@@ -427,11 +427,11 @@ export class GateService {
   private async findTicket(identifier: string) {
     const normalized = this.normalizeIdentifier(identifier);
     const upperCode = normalized.toUpperCase();
-    const tokenHash = this.hashToken(normalized);
+    const tokenHash = hashToken(normalized);
 
     // Verify QR token signature if it follows the new format
     if (normalized.includes('.')) {
-      if (!this.verifyQrSignature(normalized)) {
+      if (!verifyQrSignature(normalized)) {
         this.logger.warn(`Invalid QR token signature: ${normalized.substring(0, 20)}...`);
         return null;
       }
