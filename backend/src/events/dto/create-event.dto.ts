@@ -9,6 +9,7 @@ import {
   IsUrl,
   MaxLength,
   Min,
+  ValidateIf,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -33,6 +34,7 @@ export class CreateEventDto {
 
   @ApiPropertyOptional({ description: 'URL da imagem de capa' })
   @IsOptional()
+  @ValidateIf(o => o.imageUrl !== '')
   @IsString()
   @IsUrl({ require_tld: false })
   @MaxLength(500)
@@ -65,4 +67,21 @@ export class CreateEventDto {
   @Min(0)
   @Type(() => Number)
   price: number;
+
+  @ApiPropertyOptional({ description: 'Tipo de assento (GENERAL, SEATED, MIXED)' })
+  @IsOptional()
+  @IsString()
+  seatType?: string;
+
+  @ApiPropertyOptional({ description: 'Número de fileiras' })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  rows?: number;
+
+  @ApiPropertyOptional({ description: 'Assentos por fileira' })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  seatsPerRow?: number;
 }
