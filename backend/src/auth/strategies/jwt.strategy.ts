@@ -14,7 +14,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
           const secret = process.env.JWT_SECRET || 'vivae-dev-secret';
           done(null, secret);
         } catch (error) {
-          done(error, null);
+          done(error, undefined);
         }
       },
     });
